@@ -17,6 +17,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+// Static optimization: Force static rendering for lobby page
+export const dynamic = 'force-static';
+export const revalidate = 3600; // Revalidate every 1 hour
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-background">

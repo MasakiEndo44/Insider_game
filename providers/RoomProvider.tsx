@@ -1,27 +1,28 @@
 'use client';
 
-import { createClient } from '@/lib/supabase/client';
-import { logger } from '@/lib/logger';
-import {
+import React, {
   createContext,
   useContext,
   useEffect,
-  useState,
   useRef,
+  useState,
 } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
+import { useMachine } from '@xstate/react';
+import { gameMachine, type GameEvent } from '@/lib/machines/gameMachine';
+import type { GameMachineSnapshot } from '@/lib/machines/gameMachine';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface RoomContextType {
   roomId: string;
   isConnected: boolean;
-  players: Player[];
-  roomStatus: string;
-}
-
-interface Player {
-  id: string;
-  displayName: string;
-  isReady: boolean;
-  isHost: boolean;
+  // XState machine state
+  gameState: GameMachineSnapshot;
+  // Method to send events to the state machine
+  sendEvent: (event: GameEvent) => void;
+  // Supabase channel for broadcasting events
+  channel: RealtimeChannel | null;
 }
 
 const RoomContext = createContext<RoomContextType | null>(null);
@@ -40,14 +41,16 @@ interface RoomProviderProps {
 }
 
 export function RoomProvider({ roomId, children }: RoomProviderProps) {
+  // XState machine for game flow
+  const [gameState, send] = useMachine(gameMachine, {
+    input: { roomId },
+  });
+
+  // Connection state
   const [isConnected, setIsConnected] = useState(false);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [roomStatus, setRoomStatus] = useState('WAITING_FOR_PLAYERS');
 
   // Connection pooling: Prevent duplicate WebSocket connections
-  const channelRef = useRef<ReturnType<
-    ReturnType<typeof createClient>['channel']
-  > | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const playerIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -92,35 +95,56 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
 
     channelRef.current = channel;
 
+    // Listen for game events broadcast from other players (or server)
+    channel.on('broadcast', { event: 'game-event' }, (payload) => {
+      logger.debug('Received game event:', payload);
+      const event = payload.payload as GameEvent;
+      // Send the event to our local state machine
+      send(event);
+    });
+
+    // Listen for presence changes and update game state
     channel
       .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState<Player>();
-        const playerList: Player[] = [];
-
-        Object.keys(state).forEach((key) => {
-          const presences = state[key];
-          if (presences && presences.length > 0) {
-            const playerData = presences[0] as unknown as Player;
-            playerList.push(playerData);
-          }
+        const state = channel.presenceState();
+        const playerList = Object.keys(state).map((key) => {
+          const presence = state[key][0] as any; // Supabase presence type
+          return {
+            id: presence.id,
+            nickname: presence.displayName,
+            isHost: presence.isHost,
+            isConnected: true,
+            isReady: presence.isReady,
+          };
         });
 
-        setPlayers(playerList);
-        setIsConnected(true);
         logger.debug('Presence sync - total players:', playerList.length);
+
+        // Update XState machine with current player list
+        if (playerList.length > 0) {
+          playerList.forEach((player) => {
+            send({ type: 'player.join', player });
+          });
+        }
       })
       .on('presence', { event: 'join' }, ({ newPresences }) => {
         logger.debug('Player joined:', newPresences);
       })
       .on('presence', { event: 'leave' }, ({ leftPresences }) => {
         logger.debug('Player left:', leftPresences);
+        // Update XState machine to remove left players
+        Object.keys(leftPresences).forEach((key) => {
+          const playerId = ((leftPresences as any)[key][0] as any).id;
+          send({ type: 'player.leave', playerId });
+        });
       })
       .subscribe(async (status, error) => {
         if (status === 'SUBSCRIBED') {
           logger.debug('WebSocket subscribed successfully');
+          setIsConnected(true);
 
           // Get current player count to determine host status
-          const currentState = channel.presenceState<Player>();
+          const currentState = channel.presenceState();
           const isFirstPlayer = Object.keys(currentState).length === 0;
 
           // Track this player's presence
@@ -147,13 +171,35 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
       channel.unsubscribe();
       channelRef.current = null;
     };
-  }, [roomId]);
+  }, [roomId, send]);
+
+  /**
+   * Send a game event to the state machine and broadcast to all players
+   * For MVP: Client-coordinated model (all clients broadcast directly)
+   * Future: Server-authoritative model (send to Edge Function for validation)
+   */
+  const sendEvent = async (event: GameEvent) => {
+    logger.debug('Sending game event:', event);
+
+    // Update local state machine immediately (optimistic update)
+    send(event);
+
+    // Broadcast to all other players via Supabase Realtime
+    if (channelRef.current) {
+      await channelRef.current.send({
+        type: 'broadcast',
+        event: 'game-event',
+        payload: event,
+      });
+    }
+  };
 
   const value: RoomContextType = {
     roomId,
     isConnected,
-    players,
-    roomStatus,
+    gameState,
+    sendEvent,
+    channel: channelRef.current,
   };
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;

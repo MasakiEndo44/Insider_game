@@ -13,8 +13,12 @@ import { CheckCircle2, Circle, Crown, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function RoomWaitingPage() {
-  const { roomId, isConnected, players, roomStatus } = useRoom();
+  const { roomId, isConnected, gameState, sendEvent } = useRoom();
   const router = useRouter();
+
+  // Access players and status from XState machine context
+  const players = gameState.context.players;
+  const currentPhase = String(gameState.value); // Current game phase
 
   const currentPlayer = players[0]; // Simplified: first player is current
   const isHost = currentPlayer?.isHost ?? false;
@@ -22,6 +26,8 @@ export default function RoomWaitingPage() {
   const canStart = players.length >= 4 && readyCount === players.length;
 
   const handleStartGame = () => {
+    // Send game start event through XState
+    sendEvent({ type: 'game.start' });
     router.push(`/room/${roomId}/play`);
   };
 
@@ -47,7 +53,7 @@ export default function RoomWaitingPage() {
             </div>
             <div className="text-right">
               <div className="text-sm text-muted-foreground">
-                ステータス: {roomStatus}
+                フェーズ: {currentPhase}
               </div>
               <div className="text-sm font-medium">
                 <Users className="inline w-4 h-4 mr-1" />
@@ -74,7 +80,7 @@ export default function RoomWaitingPage() {
                     )}
                     <div>
                       <p className="font-medium text-foreground">
-                        {player.displayName}
+                        {player.nickname}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {player.isHost ? 'ホスト' : 'プレイヤー'}

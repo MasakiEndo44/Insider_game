@@ -25,7 +25,8 @@ type GamePhase =
   | 'GAME_END';
 
 export default function GamePage() {
-  const { players } = useRoom();
+  const { gameState } = useRoom();
+  const players = gameState.context.players;
   const [currentPhase, setCurrentPhase] = useState<GamePhase>('ROLE_ASSIGNMENT');
   const [message, setMessage] = useState('');
 
@@ -223,7 +224,7 @@ export default function GamePage() {
                   className="w-full justify-start"
                   onClick={() => setCurrentPhase('RESULT')}
                 >
-                  {player.displayName}
+                  {player.nickname}
                 </Button>
               ))}
             </div>
@@ -252,7 +253,7 @@ export default function GamePage() {
                       key={player.id}
                       className="flex justify-between items-center p-2 bg-secondary rounded"
                     >
-                      <span>{player.displayName}</span>
+                      <span>{player.nickname}</span>
                       <span className="font-medium">
                         {i === 0 ? '🎭 インサイダー' : '👤 市民'}
                       </span>
