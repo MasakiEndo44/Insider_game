@@ -1,6 +1,7 @@
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 import { createContext, useContext, useEffect, useState } from 'react';
 
 interface RoomContextType {
@@ -60,10 +61,10 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
         setIsConnected(true);
       })
       .on('presence', { event: 'join' }, ({ newPresences }) => {
-        console.log('Player joined:', newPresences);
+        logger.debug('Player joined:', newPresences);
       })
       .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        console.log('Player left:', leftPresences);
+        logger.debug('Player left:', leftPresences);
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
