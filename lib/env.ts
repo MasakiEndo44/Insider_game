@@ -5,9 +5,11 @@
  * and provides type-safe exports to eliminate non-null assertions.
  */
 
-// Helper function to validate environment variable
-function getEnvVar(key: string, value: string | undefined): string {
-  if (!value) {
+// Helper function to validate environment variable (exported for runtime use)
+export function getEnvVar(key: string, value?: string): string {
+  const envValue = value !== undefined ? value : process.env[key];
+
+  if (!envValue) {
     throw new Error(
       `❌ Missing required environment variable: ${key}\n\n` +
         `Please check your .env.local file or Vercel environment settings.\n` +
@@ -15,7 +17,7 @@ function getEnvVar(key: string, value: string | undefined): string {
         `For Vercel deployment, add the variable in Project Settings → Environment Variables.`
     );
   }
-  return value;
+  return envValue;
 }
 
 // Type-safe exports (validated at module load time)
