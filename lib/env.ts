@@ -3,10 +3,21 @@
  *
  * This module validates required environment variables at startup
  * and provides type-safe exports to eliminate non-null assertions.
+ *
+ * Note: Client-side validation only checks NEXT_PUBLIC_ variables.
+ * Server-only variables are validated only on the server.
  */
 
+// Check if running on client side
+const isClient = typeof window !== 'undefined';
+
 // Helper function to validate environment variable (exported for runtime use)
-export function getEnvVar(key: string, value?: string): string {
+export function getEnvVar(key: string, value?: string, isServerOnly = false): string {
+  // Skip server-only variables on client side
+  if (isClient && isServerOnly) {
+    return ''; // Return empty string for server-only vars on client
+  }
+
   const envValue = value !== undefined ? value : process.env[key];
 
   if (!envValue) {
@@ -37,7 +48,8 @@ export const env = {
   /** HMAC Secret for passphrase hashing (server-only) */
   PASSPHRASE_HMAC_SECRET: getEnvVar(
     'PASSPHRASE_HMAC_SECRET',
-    process.env.PASSPHRASE_HMAC_SECRET
+    process.env.PASSPHRASE_HMAC_SECRET,
+    true // Server-only flag
   ),
 } as const;
 
