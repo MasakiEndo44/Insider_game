@@ -119,30 +119,36 @@ export type Database = {
       players: {
         Row: {
           confirmed: boolean | null
-          created_at: string | null
           id: string
           is_connected: boolean | null
           is_host: boolean | null
+          joined_at: string | null
+          last_heartbeat: string | null
           nickname: string
           room_id: string
+          user_id: string | null
         }
         Insert: {
           confirmed?: boolean | null
-          created_at?: string | null
           id?: string
           is_connected?: boolean | null
           is_host?: boolean | null
+          joined_at?: string | null
+          last_heartbeat?: string | null
           nickname: string
           room_id: string
+          user_id?: string | null
         }
         Update: {
           confirmed?: boolean | null
-          created_at?: string | null
           id?: string
           is_connected?: boolean | null
           is_host?: boolean | null
+          joined_at?: string | null
+          last_heartbeat?: string | null
           nickname?: string
           room_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {

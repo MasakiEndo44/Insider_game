@@ -56,7 +56,7 @@ export function useRoomPlayers(roomId: string | null): UseRoomPlayersReturn {
           .from('players')
           .select('*')
           .eq('room_id', roomId)
-          .order('created_at', { ascending: true });
+          .order('joined_at', { ascending: true });
 
         if (fetchError) throw fetchError;
         setPlayers(data as Player[]);
