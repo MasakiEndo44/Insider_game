@@ -98,6 +98,7 @@
     "playwright": "^1.56.1",
     "postcss": "^8.5",
     "prettier": "^3.6.2",
+    "svgo": "^4.0.0",
     "tailwindcss": "^4.1.9",
     "typescript": "^5"
   }
