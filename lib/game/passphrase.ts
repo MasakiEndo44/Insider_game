@@ -2,6 +2,7 @@
  * Passphrase Hashing Utilities
  *
  * Uses Argon2id for secure passphrase hashing with HMAC-SHA256 pepper
+ * Also provides SHA-256 lookup hash for efficient database queries
  */
 
 import { hash, verify } from '@node-rs/argon2';
@@ -55,4 +56,26 @@ export async function verifyPassphrase(
   const isValid = await verify(hashedPassphrase, pepperedPassphrase);
 
   return isValid;
+}
+
+/**
+ * Generate deterministic lookup hash for fast database queries
+ *
+ * Uses SHA-256 for deterministic hashing (same input = same output)
+ * This allows efficient database indexing while maintaining security
+ * via separate Argon2id verification
+ *
+ * @param passphrase - The raw passphrase to hash
+ * @returns string - SHA-256 hash (hex string)
+ */
+export function generateLookupHash(passphrase: string): string {
+  const secret = getEnvVar('PASSPHRASE_HMAC_SECRET');
+
+  // Use HMAC-SHA256 for deterministic hash
+  const lookupHash = crypto
+    .createHmac('sha256', secret)
+    .update(passphrase)
+    .digest('hex');
+
+  return lookupHash;
 }

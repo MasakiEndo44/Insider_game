@@ -8,7 +8,7 @@
 'use server';
 
 import { createServiceClient } from '@/lib/supabase/server';
-import { hashPassphrase, verifyPassphrase } from '@/lib/game/passphrase';
+import { hashPassphrase, verifyPassphrase, generateLookupHash } from '@/lib/game/passphrase';
 
 /**
  * Create a new game room
@@ -34,11 +34,15 @@ export async function createRoom(passphrase: string, playerName: string) {
     // 1. Hash passphrase using Argon2id + HMAC-SHA256
     const passphraseHash = await hashPassphrase(passphrase.trim());
 
-    // 2. Create room
+    // 2. Generate deterministic lookup hash for efficient queries
+    const lookupHash = generateLookupHash(passphrase.trim());
+
+    // 3. Create room with both hashes
     const { data: room, error: roomError } = await supabase
       .from('rooms')
       .insert({
         passphrase_hash: passphraseHash,
+        passphrase_lookup_hash: lookupHash,
         phase: 'LOBBY',
       })
       .select()
@@ -113,19 +117,20 @@ export async function joinRoom(passphrase: string, playerName: string) {
   const supabase = createServiceClient();
 
   try {
-    // 1. Hash provided passphrase
-    const passphraseHash = await hashPassphrase(passphrase.trim());
+    // 1. Generate deterministic lookup hash for fast query (O(1) with index)
+    const lookupHash = generateLookupHash(passphrase.trim());
 
-    // 2. Find room with matching passphrase hash
+    // 2. Find room using lookup hash
     const { data: room, error: roomError } = await supabase
       .from('rooms')
       .select('*')
-      .eq('passphrase_hash', passphraseHash)
-      .eq('is_suspended', false) // Only active rooms
-      .single();
+      .eq('passphrase_lookup_hash', lookupHash)
+      .eq('is_suspended', false)
+      .maybeSingle(); // Use maybeSingle to avoid 406 if no match
 
-    if (roomError || !room) {
-      console.error('[joinRoom] Room not found:', roomError);
+    // 3. Verify with Argon2id for security (defense in depth)
+    if (!room || !(await verifyPassphrase(passphrase.trim(), room.passphrase_hash))) {
+      console.error('[joinRoom] Room not found or passphrase verification failed');
       throw new Error('合言葉が正しくないか、ルームが存在しません');
     }
 
