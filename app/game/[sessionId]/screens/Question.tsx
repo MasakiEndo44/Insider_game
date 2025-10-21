@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { usePlayerRole } from '@/hooks/use-player-role'
 import { useCountdown } from '@/hooks/use-countdown'
-import { Clock, MessageCircle, CheckCircle } from 'lucide-react'
+import { useSupabase } from '@/app/providers'
+import { Clock, MessageCircle, CheckCircle, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
@@ -31,6 +32,7 @@ export function QuestionScreen({
   deadlineEpoch,
   serverOffset,
 }: QuestionScreenProps) {
+  const supabase = useSupabase()
   const { role, loading: roleLoading } = usePlayerRole(sessionId, playerId)
   const { formatted, remaining, progress, isComplete } = useCountdown({
     deadlineEpoch,
@@ -38,21 +40,53 @@ export function QuestionScreen({
   })
 
   const [reportingAnswer, setReportingAnswer] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Handle correct answer report (MASTER only)
   const handleReportAnswer = async () => {
     if (role !== 'MASTER') return
 
     setReportingAnswer(true)
+    setError(null)
 
-    // TODO: Call Edge Function to set answerer and transition to DEBATE
-    // For now, just show confirmation
-    console.log('[QuestionScreen] Reporting correct answer...')
+    try {
+      // Get room_id from session
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('game_sessions')
+        .select('room_id')
+        .eq('id', sessionId)
+        .single()
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+      if (sessionError || !sessionData) {
+        throw new Error('Failed to fetch session data')
+      }
 
-    setReportingAnswer(false)
+      // TODO: Add UI to select which player answered correctly
+      // For now, using playerId as answerer_id (test implementation)
+      const answererId = playerId
+
+      // Call report-answer Edge Function
+      const { data, error: functionError } = await supabase.functions.invoke('report-answer', {
+        body: {
+          session_id: sessionId,
+          room_id: sessionData.room_id,
+          answerer_id: answererId,
+          player_id: playerId,
+        },
+      })
+
+      if (functionError) {
+        throw functionError
+      }
+
+      console.log('[QuestionScreen] Answer reported successfully:', data)
+      // Phase transition will be handled by Realtime broadcast
+    } catch (err) {
+      console.error('[QuestionScreen] Error reporting answer:', err)
+      setError(err instanceof Error ? err.message : 'Failed to report answer')
+    } finally {
+      setReportingAnswer(false)
+    }
   }
 
   // Loading state
@@ -184,6 +218,17 @@ export function QuestionScreen({
             <p className="text-sm text-secondary-foreground mt-1">
               次のフェーズへ移行します...
             </p>
+          </div>
+        )}
+
+        {/* Error display */}
+        {error && (
+          <div className="bg-[#E50012]/10 border border-[#E50012]/30 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-[#E50012]">
+              <AlertCircle className="w-5 h-5" />
+              <p className="font-bold">エラー</p>
+            </div>
+            <p className="text-sm text-secondary-foreground mt-2">{error}</p>
           </div>
         )}
       </div>

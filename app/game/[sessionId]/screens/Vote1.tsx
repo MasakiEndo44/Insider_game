@@ -157,6 +157,53 @@ export function Vote1Screen({
   const allVoted = votedCount === totalPlayers
   const votingProgress = totalPlayers > 0 ? Math.round((votedCount / totalPlayers) * 100) : 0
 
+  // Auto-call tally-votes when all players have voted
+  useEffect(() => {
+    if (!allVoted || !myVote) return
+
+    async function tallyVotes() {
+      try {
+        // Get room_id from session
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('game_sessions')
+          .select('room_id')
+          .eq('id', sessionId)
+          .single()
+
+        if (sessionError || !sessionData) {
+          console.error('[Vote1Screen] Failed to fetch session:', sessionError)
+          return
+        }
+
+        console.log('[Vote1Screen] All votes received, calling tally-votes...')
+
+        // Call tally-votes Edge Function
+        const { data, error: tallyError } = await supabase.functions.invoke('tally-votes', {
+          body: {
+            session_id: sessionId,
+            room_id: sessionData.room_id,
+            vote_type: 'VOTE1',
+          },
+        })
+
+        if (tallyError) {
+          console.error('[Vote1Screen] Error tallying votes:', tallyError)
+          return
+        }
+
+        console.log('[Vote1Screen] Votes tallied:', data)
+        // Phase transition will be handled by Realtime broadcast
+      } catch (error) {
+        console.error('[Vote1Screen] Unexpected error:', error)
+      }
+    }
+
+    // Small delay to ensure all clients have synced votes
+    const timeoutId = setTimeout(tallyVotes, 1000)
+
+    return () => clearTimeout(timeoutId)
+  }, [allVoted, myVote, sessionId, supabase])
+
   return (
     <div className="min-h-screen circuit-bg circuit-pattern p-4 pb-24">
       <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
