@@ -1,6 +1,6 @@
 "use client"
 
-import { Crown, Check } from "lucide-react"
+import { Crown, Check } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
 
 interface PlayerChipProps {

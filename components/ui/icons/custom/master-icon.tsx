@@ -1,14 +1,12 @@
 import React from "react";
-import { IconBase, IconProps } from "../icon-base";
+import { Crown } from "lucide-react";
+import { IconProps } from "../icon-base";
 
 /**
  * MasterIcon - Role indicator for Master player
  *
- * PLACEHOLDER: This component contains a temporary crown icon.
- * Replace the SVG path content with the optimized vector from master.svg
- * once proper SVG file is available.
- *
- * Expected visual: Crown shape with 3 peaks
+ * Uses lucide-react Crown icon as fallback since master.svg (11KB) exceeds size limit.
+ * Visual: Crown shape representing the master/leader role
  *
  * @example
  * ```tsx
@@ -16,12 +14,5 @@ import { IconBase, IconProps } from "../icon-base";
  * ```
  */
 export function MasterIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      {/* PLACEHOLDER: Replace with actual master.svg path */}
-      {/* Temporary crown icon (3 triangular peaks) */}
-      <path d="M2 20h20v-2H2v2zm2-8l4 4 4-4 4 4 4-4v8H4v-8z" />
-      <path d="M12 2L8 10l4 4 4-4-4-8z" />
-    </IconBase>
-  );
+  return <Crown {...props} />;
 }

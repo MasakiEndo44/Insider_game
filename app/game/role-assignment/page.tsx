@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Eye } from "lucide-react"
+import { Eye } from "@/components/ui/icons"
 
 export default function RoleAssignmentPage() {
   const router = useRouter()

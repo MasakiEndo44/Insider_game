@@ -15,6 +15,12 @@ export interface IconProps extends React.SVGAttributes<SVGElement> {
   strokeWidth?: number;
 
   /**
+   * ViewBox attribute for custom coordinate systems
+   * @default "0 0 24 24"
+   */
+  viewBox?: string;
+
+  /**
    * Additional CSS classes
    */
   className?: string;
@@ -53,6 +59,7 @@ export interface IconProps extends React.SVGAttributes<SVGElement> {
 export function IconBase({
   size = 24,
   strokeWidth = 2,
+  viewBox = "0 0 24 24",
   className,
   children,
   "aria-label": ariaLabel,
@@ -64,7 +71,7 @@ export function IconBase({
       xmlns="http://www.w3.org/2000/svg"
       width={size}
       height={size}
-      viewBox="0 0 24 24"
+      viewBox={viewBox}
       fill="none"
       stroke="currentColor"
       strokeWidth={strokeWidth}

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { usePlayerRole, type PlayerRole } from '@/hooks/use-player-role'
-import { Crown, Eye, HelpCircle } from 'lucide-react'
+import { MasterIcon, InsiderIcon, CommonIcon } from '@/components/ui/icons'
+import { HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 
@@ -23,19 +24,19 @@ const ROLE_INFO: Record<PlayerRole, {
 }> = {
   MASTER: {
     label: 'マスター',
-    icon: <Crown className="w-16 h-16" />,
+    icon: <MasterIcon size={64} aria-hidden />,
     description: 'トピックを知っている司会者',
     color: 'text-yellow-400',
   },
   INSIDER: {
     label: 'インサイダー',
-    icon: <Eye className="w-16 h-16" />,
+    icon: <InsiderIcon size={64} aria-hidden />,
     description: 'トピックを知っている内通者',
     color: 'text-[#E50012]',
   },
   CITIZEN: {
     label: '市民',
-    icon: <HelpCircle className="w-16 h-16" />,
+    icon: <CommonIcon size={64} aria-hidden />,
     description: 'トピックを知らない一般市民',
     color: 'text-blue-400',
   },
