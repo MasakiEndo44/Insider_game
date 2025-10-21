@@ -45,6 +45,13 @@ export const env = {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ),
 
+  /** Supabase Service Role Key (server-only, bypasses RLS) */
+  SUPABASE_SERVICE_ROLE_KEY: getEnvVar(
+    'SUPABASE_SERVICE_ROLE_KEY',
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    true // Server-only flag
+  ),
+
   /** HMAC Secret for passphrase hashing (server-only) */
   PASSPHRASE_HMAC_SECRET: getEnvVar(
     'PASSPHRASE_HMAC_SECRET',

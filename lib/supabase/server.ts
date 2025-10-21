@@ -9,8 +9,13 @@
 
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { env } from '@/lib/env';
 
+/**
+ * Creates a Supabase client with user authentication (respects RLS)
+ * Use this in Server Components where you need user-specific data
+ */
 export async function createClient() {
   const cookieStore = await cookies();
 
@@ -33,6 +38,27 @@ export async function createClient() {
             // user sessions.
           }
         },
+      },
+    }
+  );
+}
+
+/**
+ * Creates a Supabase client with service role privileges (bypasses RLS)
+ * Use this in Server Actions where you need full database access
+ *
+ * ⚠️  WARNING: This client bypasses Row Level Security policies.
+ * Only use in trusted server-side code (Server Actions, API Routes).
+ * Never expose service role credentials to the client.
+ */
+export function createServiceClient() {
+  return createSupabaseClient(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
       },
     }
   );

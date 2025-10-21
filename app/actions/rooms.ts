@@ -7,7 +7,7 @@
 
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/server';
 import { hashPassphrase, verifyPassphrase } from '@/lib/game/passphrase';
 
 /**
@@ -28,7 +28,7 @@ export async function createRoom(passphrase: string, playerName: string) {
     throw new Error('プレイヤー名は1〜20文字で入力してください');
   }
 
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   try {
     // 1. Hash passphrase using Argon2id + HMAC-SHA256
@@ -110,7 +110,7 @@ export async function joinRoom(passphrase: string, playerName: string) {
     throw new Error('プレイヤー名は1〜20文字で入力してください');
   }
 
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   try {
     // 1. Hash provided passphrase
