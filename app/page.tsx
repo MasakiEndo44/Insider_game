@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -6,20 +5,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-
-// Static optimization: Force static rendering for lobby page
-export const dynamic = 'force-static';
-export const revalidate = 3600; // Revalidate every 1 hour
+import { Button } from '@/components/ui/button';
+import { CreateRoomDialog } from '@/app/components/lobby/CreateRoomDialog';
+import { JoinRoomDialog } from '@/app/components/lobby/JoinRoomDialog';
 
 export default function Home() {
   return (
@@ -40,71 +28,8 @@ export default function Home() {
       <div className="container mx-auto px-4 py-8">
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          {/* Create Room Dialog */}
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button size="lg" className="flex-1">
-                ルームを作成
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>新しいルームを作成</DialogTitle>
-                <DialogDescription>
-                  パスフレーズを設定してゲームルームを作成します
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="passphrase">パスフレーズ</Label>
-                  <Input
-                    id="passphrase"
-                    type="password"
-                    placeholder="4文字以上の英数字"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="max-players">最大プレイヤー数</Label>
-                  <Input
-                    id="max-players"
-                    type="number"
-                    defaultValue="6"
-                    min="4"
-                    max="8"
-                  />
-                </div>
-              </div>
-              <Button className="w-full">作成</Button>
-            </DialogContent>
-          </Dialog>
-
-          {/* Find Room Dialog - 修正：適切なコントラストを確保 */}
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button size="lg" variant="outline" className="flex-1">
-                ルームを探す
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>ルームに参加</DialogTitle>
-                <DialogDescription>
-                  パスフレーズを入力してルームに参加します
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="join-passphrase">パスフレーズ</Label>
-                  <Input
-                    id="join-passphrase"
-                    type="password"
-                    placeholder="ルームのパスフレーズを入力"
-                  />
-                </div>
-              </div>
-              <Button className="w-full">参加</Button>
-            </DialogContent>
-          </Dialog>
+          <CreateRoomDialog />
+          <JoinRoomDialog />
         </div>
 
         {/* Room List Section */}

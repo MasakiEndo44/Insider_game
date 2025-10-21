@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -8,27 +9,116 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { useRoom } from '@/providers/RoomProvider';
 import { CheckCircle2, Circle, Crown, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 export default function RoomWaitingPage() {
   const { roomId, isConnected, gameState, sendEvent } = useRoom();
   const router = useRouter();
+  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null);
+  const [isTogglingReady, setIsTogglingReady] = useState(false);
+  const [difficulty, setDifficulty] = useState<'Easy' | 'Normal' | 'Hard'>(
+    'Normal'
+  );
+  const [isStarting, setIsStarting] = useState(false);
+
+  // Get current player ID from Supabase auth
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setCurrentPlayerId(user.id);
+      }
+    });
+  }, []);
 
   // Access players and status from XState machine context
   const players = gameState.context.players;
   const currentPhase = String(gameState.value); // Current game phase
 
-  const currentPlayer = players[0]; // Simplified: first player is current
+  const currentPlayer = players.find((p) => p.id === currentPlayerId);
   const isHost = currentPlayer?.isHost ?? false;
   const readyCount = players.filter((p) => p.isReady).length;
   const canStart = players.length >= 4 && readyCount === players.length;
 
-  const handleStartGame = () => {
-    // Send game start event through XState
-    sendEvent({ type: 'game.start' });
-    router.push(`/room/${roomId}/play`);
+  const handleToggleReady = async () => {
+    if (!currentPlayerId || !currentPlayer) return;
+
+    setIsTogglingReady(true);
+    try {
+      const supabase = createClient();
+      const newReadyState = !currentPlayer.isReady;
+
+      const { error } = await supabase
+        .from('players')
+        .update({ confirmed: newReadyState })
+        .eq('id', currentPlayerId);
+
+      if (error) {
+        console.error('Failed to toggle ready status:', error);
+      }
+    } catch (error) {
+      console.error('Error toggling ready:', error);
+    } finally {
+      setIsTogglingReady(false);
+    }
+  };
+
+  const handleStartGame = async () => {
+    if (!canStart) return;
+
+    setIsStarting(true);
+    try {
+      const supabase = createClient();
+
+      // Create game session with selected difficulty
+      const { data: session, error: sessionError } = await supabase
+        .from('game_sessions')
+        .insert({
+          room_id: roomId,
+          difficulty,
+          start_time: new Date().toISOString(),
+          // deadline_epoch will be set when question phase starts
+        })
+        .select()
+        .single();
+
+      if (sessionError || !session) {
+        console.error('Failed to create game session:', sessionError);
+        return;
+      }
+
+      // Update room phase to DEAL (role assignment)
+      const { error: roomError } = await supabase
+        .from('rooms')
+        .update({ phase: 'DEAL' })
+        .eq('id', roomId);
+
+      if (roomError) {
+        console.error('Failed to update room phase:', roomError);
+        return;
+      }
+
+      // Send game start event through XState
+      sendEvent({ type: 'game.start' });
+
+      // Navigate to play page
+      router.push(`/room/${roomId}/play`);
+    } catch (error) {
+      console.error('Error starting game:', error);
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   return (
@@ -123,30 +213,64 @@ export default function RoomWaitingPage() {
         </div>
       </div>
 
+      {/* Host Controls - Difficulty Selection */}
+      {isHost && (
+        <Card className="mb-4">
+          <CardHeader>
+            <CardTitle className="text-lg">ゲーム設定</CardTitle>
+            <CardDescription>お題の難易度を選択してください</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="difficulty">難易度</Label>
+              <Select
+                value={difficulty}
+                onValueChange={(value) =>
+                  setDifficulty(value as 'Easy' | 'Normal' | 'Hard')
+                }
+              >
+                <SelectTrigger id="difficulty">
+                  <SelectValue placeholder="難易度を選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Easy">やさしい（初心者向け）</SelectItem>
+                  <SelectItem value="Normal">ふつう（推奨）</SelectItem>
+                  <SelectItem value="Hard">むずかしい（上級者向け）</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-4">
         <Button
           variant="secondary"
           size="lg"
           className="flex-1"
-          onClick={() => {
-            // Toggle ready status (TODO: implement Supabase update)
-            console.log('Toggle ready');
-          }}
+          onClick={handleToggleReady}
+          disabled={isTogglingReady || !currentPlayer}
         >
-          {currentPlayer?.isReady ? '準備解除' : '準備完了'}
+          {isTogglingReady
+            ? '処理中...'
+            : currentPlayer?.isReady
+              ? '準備解除'
+              : '準備完了'}
         </Button>
 
         {isHost && (
           <Button
             size="lg"
             className="flex-1"
-            disabled={!canStart}
+            disabled={!canStart || isStarting}
             onClick={handleStartGame}
           >
-            {canStart
-              ? 'ゲーム開始'
-              : `待機中 (${players.length}/4 人, ${readyCount}/${players.length} 準備完了)`}
+            {isStarting
+              ? '開始中...'
+              : canStart
+                ? 'ゲーム開始'
+                : `待機中 (${players.length}/4 人, ${readyCount}/${players.length} 準備完了)`}
           </Button>
         )}
       </div>

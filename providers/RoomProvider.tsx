@@ -52,6 +52,7 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
   // Connection pooling: Prevent duplicate WebSocket connections
   const channelRef = useRef<RealtimeChannel | null>(null);
   const playerIdRef = useRef<string | null>(null);
+  const [currentPlayerData, setCurrentPlayerData] = useState<any>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -62,114 +63,180 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
       return;
     }
 
-    // Generate or retrieve persistent player ID
-    if (!playerIdRef.current) {
-      const storageKey = `insider_game_player_id_${roomId}`;
-      const storedId =
-        typeof window !== 'undefined'
-          ? sessionStorage.getItem(storageKey)
-          : null;
+    // Fetch current authenticated user and player data from database
+    const initializePlayer = async () => {
+      // Get authenticated user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-      if (storedId) {
-        playerIdRef.current = storedId;
-        logger.debug('Restored player ID from sessionStorage:', storedId);
-      } else {
-        const newId = crypto.randomUUID();
-        playerIdRef.current = newId;
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem(storageKey, newId);
-        }
-        logger.debug('Generated new player ID:', newId);
+      if (authError || !user) {
+        logger.error('Failed to get authenticated user:', authError);
+        return;
       }
-    }
 
-    logger.debug('Creating new WebSocket channel for room:', roomId);
+      playerIdRef.current = user.id;
+      logger.debug('Using authenticated user ID:', user.id);
 
-    // Supabase Realtime channel for this room
-    const channel = supabase.channel(`room:${roomId}`, {
-      config: {
-        broadcast: { self: true },
-        presence: { key: playerIdRef.current },
-      },
-    });
+      // Fetch player data from database
+      const { data: player, error: playerError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('id', user.id)
+        .eq('room_id', roomId)
+        .single();
 
-    channelRef.current = channel;
+      if (playerError || !player) {
+        logger.error('Failed to fetch player from database:', playerError);
+        return;
+      }
 
-    // Listen for game events broadcast from other players (or server)
-    channel.on('broadcast', { event: 'game-event' }, (payload) => {
-      logger.debug('Received game event:', payload);
-      const event = payload.payload as GameEvent;
-      // Send the event to our local state machine
-      send(event);
-    });
+      setCurrentPlayerData(player);
+      logger.debug('Loaded player data from database:', player);
 
-    // Listen for presence changes and update game state
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const playerList = Object.keys(state).map((key) => {
-          const presence = state[key][0] as any; // Supabase presence type
-          return {
-            id: presence.id,
-            nickname: presence.displayName,
-            isHost: presence.isHost,
-            isConnected: true,
-            isReady: presence.isReady,
-          };
-        });
+      // Fetch all players in the room
+      const { data: allPlayers, error: allPlayersError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('room_id', roomId);
 
-        logger.debug('Presence sync - total players:', playerList.length);
-
-        // Update XState machine with current player list
-        if (playerList.length > 0) {
-          playerList.forEach((player) => {
-            send({ type: 'player.join', player });
+      if (!allPlayersError && allPlayers) {
+        logger.debug('Initial players in room:', allPlayers.length);
+        // Update XState machine with initial player list
+        allPlayers.forEach((p) => {
+          send({
+            type: 'player.join',
+            player: {
+              id: p.id,
+              nickname: p.nickname,
+              isHost: p.is_host,
+              isConnected: p.is_connected,
+              isReady: p.confirmed,
+            },
           });
-        }
-      })
-      .on('presence', { event: 'join' }, ({ newPresences }) => {
-        logger.debug('Player joined:', newPresences);
-      })
-      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        logger.debug('Player left:', leftPresences);
-        // Update XState machine to remove left players
-        Object.keys(leftPresences).forEach((key) => {
-          const playerId = ((leftPresences as any)[key][0] as any).id;
-          send({ type: 'player.leave', playerId });
         });
-      })
-      .subscribe(async (status, error) => {
-        if (status === 'SUBSCRIBED') {
-          logger.debug('WebSocket subscribed successfully');
-          setIsConnected(true);
+      }
 
-          // Get current player count to determine host status
-          const currentState = channel.presenceState();
-          const isFirstPlayer = Object.keys(currentState).length === 0;
+      setupRealtimeChannel(player);
+    };
 
-          // Track this player's presence
-          await channel.track({
-            id: playerIdRef.current,
-            displayName: `Player${Math.floor(Math.random() * 1000)}`,
-            isReady: false,
-            isHost: isFirstPlayer,
-          });
-        } else if (status === 'CHANNEL_ERROR') {
-          logger.error('WebSocket channel error:', error);
-          setIsConnected(false);
-        } else if (status === 'TIMED_OUT') {
-          logger.warn('WebSocket subscription timed out');
-          setIsConnected(false);
-        } else if (status === 'CLOSED') {
-          logger.debug('WebSocket channel closed');
-          setIsConnected(false);
-        }
+    const setupRealtimeChannel = (player: any) => {
+      logger.debug('Creating new WebSocket channel for room:', roomId);
+
+      // Supabase Realtime channel for this room
+      const channel = supabase.channel(`room:${roomId}`, {
+        config: {
+          broadcast: { self: true },
+          presence: { key: player.id },
+        },
       });
+
+      channelRef.current = channel;
+
+      // Listen for game events broadcast from other players (or server)
+      channel.on('broadcast', { event: 'game-event' }, (payload) => {
+        logger.debug('Received game event:', payload);
+        const event = payload.payload as GameEvent;
+        // Send the event to our local state machine
+        send(event);
+      });
+
+      // Listen for database changes to players table
+      channel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'players',
+          filter: `room_id=eq.${roomId}`,
+        },
+        (payload) => {
+          logger.debug('Player database change:', payload);
+
+          if (payload.eventType === 'INSERT') {
+            const newPlayer = payload.new as any;
+            send({
+              type: 'player.join',
+              player: {
+                id: newPlayer.id,
+                nickname: newPlayer.nickname,
+                isHost: newPlayer.is_host,
+                isConnected: newPlayer.is_connected,
+                isReady: newPlayer.confirmed,
+              },
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedPlayer = payload.new as any;
+            // Update ready status using existing event
+            send({
+              type: 'player.ready',
+              playerId: updatedPlayer.id,
+              isReady: updatedPlayer.confirmed,
+            });
+          } else if (payload.eventType === 'DELETE') {
+            const deletedPlayer = payload.old as any;
+            send({ type: 'player.leave', playerId: deletedPlayer.id });
+          }
+        }
+      );
+
+      // Listen for presence changes (for connection status)
+      channel
+        .on('presence', { event: 'sync' }, () => {
+          const state = channel.presenceState();
+          logger.debug('Presence sync - total online:', Object.keys(state).length);
+        })
+        .on('presence', { event: 'join' }, ({ newPresences }) => {
+          logger.debug('Player came online:', newPresences);
+        })
+        .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+          logger.debug('Player went offline:', leftPresences);
+          // Update database to mark player as disconnected
+          Object.keys(leftPresences).forEach(async (key) => {
+            const playerId = ((leftPresences as any)[key][0] as any).id;
+            await supabase
+              .from('players')
+              .update({ is_connected: false })
+              .eq('id', playerId);
+          });
+        })
+        .subscribe(async (status, error) => {
+          if (status === 'SUBSCRIBED') {
+            logger.debug('WebSocket subscribed successfully');
+            setIsConnected(true);
+
+            // Track this player's presence with actual data from database
+            await channel.track({
+              id: player.id,
+              displayName: player.nickname,
+              isReady: player.confirmed,
+              isHost: player.is_host,
+            });
+
+            // Update database to mark player as connected
+            await supabase
+              .from('players')
+              .update({ is_connected: true })
+              .eq('id', player.id);
+          } else if (status === 'CHANNEL_ERROR') {
+            logger.error('WebSocket channel error:', error);
+            setIsConnected(false);
+          } else if (status === 'TIMED_OUT') {
+            logger.warn('WebSocket subscription timed out');
+            setIsConnected(false);
+          } else if (status === 'CLOSED') {
+            logger.debug('WebSocket channel closed');
+            setIsConnected(false);
+          }
+        });
+    };
+
+    initializePlayer();
 
     return () => {
       logger.debug('Cleaning up WebSocket channel for room:', roomId);
-      channel.unsubscribe();
-      channelRef.current = null;
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+        channelRef.current = null;
+      }
     };
   }, [roomId, send]);
 

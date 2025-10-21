@@ -174,16 +174,17 @@ export const ResultInsertSchema = z.object({
 /**
  * Room Creation Form Schema
  * Used for validating room creation form input (before hashing passphrase)
+ * Supports Japanese characters (3-10 characters per specification)
  */
 export const RoomCreationFormSchema = z.object({
   passphrase: z
     .string()
-    .min(4, 'Passphrase must be at least 4 characters')
-    .max(50, 'Passphrase must be 50 characters or less')
-    .regex(
-      /^[a-zA-Z0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]+$/,
-      'Passphrase contains invalid characters'
-    ),
+    .min(3, 'パスフレーズは3文字以上で入力してください')
+    .max(10, 'パスフレーズは10文字以内で入力してください'),
+  nickname: z
+    .string()
+    .min(1, 'ニックネームを入力してください')
+    .max(20, 'ニックネームは20文字以内で入力してください'),
 });
 
 /**
@@ -191,7 +192,13 @@ export const RoomCreationFormSchema = z.object({
  * Used for validating room join form input (before verification)
  */
 export const RoomJoinFormSchema = z.object({
-  passphrase: z.string().min(1, 'Passphrase is required'),
+  passphrase: z
+    .string()
+    .min(1, 'パスフレーズを入力してください'),
+  nickname: z
+    .string()
+    .min(1, 'ニックネームを入力してください')
+    .max(20, 'ニックネームは20文字以内で入力してください'),
 });
 
 /**
