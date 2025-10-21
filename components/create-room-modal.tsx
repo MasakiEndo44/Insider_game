@@ -6,7 +6,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Lock, User } from "lucide-react"
+import { Lock, User, AlertCircle } from "lucide-react"
+import { createRoom } from "@/app/actions/rooms"
 
 interface CreateRoomModalProps {
   open: boolean
@@ -18,20 +19,27 @@ export function CreateRoomModal({ open, onClose }: CreateRoomModalProps) {
   const [passphrase, setPassphrase] = useState("")
   const [playerName, setPlayerName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleCreate = async () => {
     if (!passphrase.trim() || !playerName.trim()) return
 
     setIsLoading(true)
+    setError(null)
 
-    // Mock: Generate room ID and navigate to lobby
-    const roomId = Math.random().toString(36).substring(2, 8).toUpperCase()
+    try {
+      // Call Supabase backend to create room
+      const { roomId, playerId } = await createRoom(passphrase, playerName)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    // Navigate to lobby with room data
-    router.push(`/lobby?roomId=${roomId}&passphrase=${passphrase}&playerName=${playerName}&isHost=true`)
+      // Navigate to lobby with proper UUIDs
+      router.push(
+        `/lobby?roomId=${roomId}&passphrase=${encodeURIComponent(passphrase)}&playerName=${encodeURIComponent(playerName)}&playerId=${playerId}&isHost=true`
+      )
+    } catch (err) {
+      console.error('[CreateRoomModal] Error:', err)
+      setError(err instanceof Error ? err.message : 'ルームの作成に失敗しました')
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -45,6 +53,13 @@ export function CreateRoomModal({ open, onClose }: CreateRoomModalProps) {
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-500">{error}</p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="passphrase" className="text-sm font-medium text-foreground">
               合言葉
@@ -57,10 +72,12 @@ export function CreateRoomModal({ open, onClose }: CreateRoomModalProps) {
                 value={passphrase}
                 onChange={(e) => setPassphrase(e.target.value)}
                 className="pl-10 bg-input border-border placeholder:text-muted-foreground h-12 text-foreground"
-                maxLength={20}
+                maxLength={10}
+                minLength={3}
+                disabled={isLoading}
               />
             </div>
-            <p className="text-xs text-muted-foreground">他のプレイヤーが参加する際に必要です</p>
+            <p className="text-xs text-muted-foreground">他のプレイヤーが参加する際に必要です（3〜10文字）</p>
           </div>
 
           <div className="space-y-2">
@@ -75,7 +92,8 @@ export function CreateRoomModal({ open, onClose }: CreateRoomModalProps) {
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
                 className="pl-10 bg-input border-border placeholder:text-muted-foreground h-12 text-foreground"
-                maxLength={10}
+                maxLength={20}
+                disabled={isLoading}
               />
             </div>
           </div>

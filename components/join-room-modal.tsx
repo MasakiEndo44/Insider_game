@@ -6,7 +6,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Lock, User } from "lucide-react"
+import { Lock, User, AlertCircle } from "lucide-react"
+import { joinRoom } from "@/app/actions/rooms"
 
 interface JoinRoomModalProps {
   open: boolean
@@ -18,20 +19,27 @@ export function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
   const [passphrase, setPassphrase] = useState("")
   const [playerName, setPlayerName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleJoin = async () => {
     if (!passphrase.trim() || !playerName.trim()) return
 
     setIsLoading(true)
+    setError(null)
 
-    // Mock: Find room by passphrase
-    const roomId = Math.random().toString(36).substring(2, 8).toUpperCase()
+    try {
+      // Call Supabase backend to join room
+      const { roomId, playerId, nickname } = await joinRoom(passphrase, playerName)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    // Navigate to lobby
-    router.push(`/lobby?roomId=${roomId}&passphrase=${passphrase}&playerName=${playerName}&isHost=false`)
+      // Navigate to lobby with proper UUIDs
+      router.push(
+        `/lobby?roomId=${roomId}&passphrase=${encodeURIComponent(passphrase)}&playerName=${encodeURIComponent(nickname)}&playerId=${playerId}&isHost=false`
+      )
+    } catch (err) {
+      console.error('[JoinRoomModal] Error:', err)
+      setError(err instanceof Error ? err.message : 'ルームへの参加に失敗しました')
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -45,6 +53,13 @@ export function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-500">{error}</p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="join-passphrase" className="text-sm font-medium text-foreground">
               合言葉
@@ -57,7 +72,9 @@ export function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                 value={passphrase}
                 onChange={(e) => setPassphrase(e.target.value)}
                 className="pl-10 bg-input border-border placeholder:text-muted-foreground h-12 text-foreground"
-                maxLength={20}
+                maxLength={10}
+                minLength={3}
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -74,7 +91,8 @@ export function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
                 className="pl-10 bg-input border-border placeholder:text-muted-foreground h-12 text-foreground"
-                maxLength={10}
+                maxLength={20}
+                disabled={isLoading}
               />
             </div>
           </div>
