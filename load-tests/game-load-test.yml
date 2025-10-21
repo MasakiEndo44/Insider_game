@@ -1,0 +1,185 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Ramp-up: 0 → 240 users over 2 minutes
+    - duration: 120
+      arrivalRate: 2
+      rampTo: 20
+      name: "Ramp-up phase"
+
+    # Sustained load: 240 concurrent users for 15 minutes
+    - duration: 900
+      arrivalRate: 20
+      name: "Sustained load"
+
+    # Ramp-down: 240 → 0 users over 1 minute
+    - duration: 60
+      arrivalRate: 20
+      rampTo: 0
+      name: "Ramp-down phase"
+
+  plugins:
+    metrics-by-endpoint:
+      stripQueryString: true
+
+  processor: "./load-tests/processor.js"
+
+  variables:
+    # 30 rooms × 8 players = 240 users
+    roomCount: 30
+
+scenarios:
+  - name: "Player joins game and completes flow"
+    weight: 100
+    flow:
+      # ═══════════════════════════════════════════════════════════════════
+      # Setup: Assign player to room
+      # ═══════════════════════════════════════════════════════════════════
+      - function: "assignPlayerToRoom"
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Phase 1: Join Room
+      # ═══════════════════════════════════════════════════════════════════
+      - post:
+          url: "/api/rooms/join"
+          json:
+            passphrase: "{{ roomId }}"
+            nickname: "Player{{ playerId }}"
+          capture:
+            - json: "$.session_id"
+              as: "sessionId"
+            - json: "$.player_id"
+              as: "playerId"
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Phase 2: Subscribe to Realtime channel
+      # ═══════════════════════════════════════════════════════════════════
+      - function: "subscribeToRealtimeChannel"
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Phase 3: Wait for game start (host will start)
+      # ═══════════════════════════════════════════════════════════════════
+      - think: 5
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Phase 4: Confirm role (DEAL phase)
+      # ═══════════════════════════════════════════════════════════════════
+      - get:
+          url: "/api/game/{{ sessionId }}/role"
+          capture:
+            - json: "$.role"
+              as: "role"
+
+      - post:
+          url: "/api/game/{{ sessionId }}/confirm"
+          json:
+            player_id: "{{ playerId }}"
+            phase: "DEAL"
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Phase 5: Question phase (simulate questioning for 30s)
+      # ═══════════════════════════════════════════════════════════════════
+      - think: 30
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Phase 6: Vote 1 (yes/no)
+      # ═══════════════════════════════════════════════════════════════════
+      - post:
+          url: "/api/game/{{ sessionId }}/vote"
+          json:
+            player_id: "{{ playerId }}"
+            vote_type: "VOTE1"
+            vote_value: "{{ vote1Value }}"
+            round: 1
+          beforeRequest: "setRandomVote1"
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Phase 7: Wait for Vote 2 or Result
+      # ═══════════════════════════════════════════════════════════════════
+      - think: 3
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Phase 8: Vote 2 (if needed)
+      # ═══════════════════════════════════════════════════════════════════
+      - post:
+          url: "/api/game/{{ sessionId }}/vote"
+          json:
+            player_id: "{{ playerId }}"
+            vote_type: "VOTE2"
+            vote_value: "{{ vote2Value }}"
+            round: 1
+          beforeRequest: "setRandomVote2"
+          ifTrue: "{{ vote2Required }}"
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Phase 9: View results
+      # ═══════════════════════════════════════════════════════════════════
+      - get:
+          url: "/api/game/{{ sessionId }}/result"
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Cleanup
+      # ═══════════════════════════════════════════════════════════════════
+      - function: "unsubscribeFromRealtimeChannel"
+
+  - name: "Host creates room and manages game"
+    weight: 10
+    flow:
+      # ═══════════════════════════════════════════════════════════════════
+      # Phase 1: Create Room
+      # ═══════════════════════════════════════════════════════════════════
+      - post:
+          url: "/api/rooms/create"
+          json:
+            passphrase: "loadtest{{ roomIndex }}"
+            nickname: "Host{{ roomIndex }}"
+          capture:
+            - json: "$.room_id"
+              as: "roomId"
+            - json: "$.player_id"
+              as: "hostId"
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Phase 2: Wait for players to join (7 players)
+      # ═══════════════════════════════════════════════════════════════════
+      - think: 10
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Phase 3: Start game
+      # ═══════════════════════════════════════════════════════════════════
+      - post:
+          url: "/api/game/start"
+          json:
+            room_id: "{{ roomId }}"
+            host_id: "{{ hostId }}"
+            difficulty: "Normal"
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Phase 4: Report correct answer after 30s
+      # ═══════════════════════════════════════════════════════════════════
+      - think: 35
+
+      - function: "reportCorrectAnswerAsHost"
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Phase 5: Participate in voting
+      # ═══════════════════════════════════════════════════════════════════
+      - post:
+          url: "/api/game/{{ sessionId }}/vote"
+          json:
+            player_id: "{{ hostId }}"
+            vote_type: "VOTE1"
+            vote_value: "yes"
+            round: 1
+
+      - think: 3
+
+      - post:
+          url: "/api/game/{{ sessionId }}/vote"
+          json:
+            player_id: "{{ hostId }}"
+            vote_type: "VOTE2"
+            vote_value: "{{ vote2Value }}"
+            round: 1
+          beforeRequest: "setRandomVote2"
+          ifTrue: "{{ vote2Required }}"
