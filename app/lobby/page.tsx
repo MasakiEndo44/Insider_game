@@ -1,25 +1,14 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { PlayerChip } from "@/components/player-chip"
 import { RoomInfoCard } from "@/components/room-info-card"
 import { GameSettings } from "@/components/game-settings"
+import { useRoomPlayers } from "@/hooks/use-room-players"
 import { Users, Play, LogOut, Crown, Copy, Check } from "lucide-react"
 import Image from "next/image"
-
-// Mock player data
-const generateMockPlayers = (count: number, hostName: string) => {
-  const names = ["たろう", "はなこ", "けんた", "さくら", "ゆうき", "あい", "だいき", "みお"]
-  return Array.from({ length: count }, (_, i) => ({
-    id: `player-${i}`,
-    name: i === 0 ? hostName : names[i] || `プレイヤー${i + 1}`,
-    isHost: i === 0,
-    isReady: i === 0 ? true : Math.random() > 0.3,
-    joinedAt: Date.now() - (count - i) * 10000,
-  }))
-}
 
 function LobbyContent() {
   const router = useRouter()
@@ -30,28 +19,12 @@ function LobbyContent() {
   const playerName = searchParams.get("playerName") || "ゲスト"
   const isHost = searchParams.get("isHost") === "true"
 
-  const [players, setPlayers] = useState(generateMockPlayers(4, playerName))
+  // Realtime player data from Supabase
+  const { players, loading, error } = useRoomPlayers(roomId)
+
   const [copied, setCopied] = useState(false)
   const [timeLimit, setTimeLimit] = useState(5)
   const [category, setCategory] = useState("general")
-
-  // Simulate real-time player updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (Math.random() > 0.7 && players.length < 12) {
-        const newPlayer = {
-          id: `player-${players.length}`,
-          name: `プレイヤー${players.length + 1}`,
-          isHost: false,
-          isReady: false,
-          joinedAt: Date.now(),
-        }
-        setPlayers((prev) => [...prev, newPlayer])
-      }
-    }, 5000)
-
-    return () => clearInterval(interval)
-  }, [players.length])
 
   const handleCopyPassphrase = async () => {
     await navigator.clipboard.writeText(passphrase)
@@ -68,8 +41,31 @@ function LobbyContent() {
     router.push("/")
   }
 
-  const readyCount = players.filter((p) => p.isReady).length
+  const readyCount = players.filter((p) => p.confirmed).length
   const canStart = isHost && players.length >= 3 && readyCount === players.length
+
+  // Handle loading and error states
+  if (loading) {
+    return (
+      <div className="min-h-screen circuit-bg circuit-pattern flex items-center justify-center">
+        <div className="text-white text-center space-y-2">
+          <div className="text-lg font-bold">読み込み中...</div>
+          <div className="text-sm text-muted-foreground">プレイヤー情報を取得しています</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen circuit-bg circuit-pattern flex items-center justify-center">
+        <div className="text-white text-center space-y-2">
+          <div className="text-lg font-bold text-[#E50012]">エラーが発生しました</div>
+          <div className="text-sm text-muted-foreground">{error.message}</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen circuit-bg circuit-pattern p-4 pb-24">
@@ -121,10 +117,10 @@ function LobbyContent() {
             {players.map((player, index) => (
               <PlayerChip
                 key={player.id}
-                name={player.name}
-                isHost={player.isHost}
-                isReady={player.isReady}
-                isCurrentPlayer={player.name === playerName}
+                name={player.nickname}
+                isHost={player.is_host ?? false}
+                isReady={player.confirmed ?? false}
+                isCurrentPlayer={player.nickname === playerName}
                 animationDelay={index * 100}
               />
             ))}
