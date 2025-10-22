@@ -147,11 +147,11 @@ export const gameMachine = setup({
   },
   guards: {
     hasMinPlayers: ({ context }) => {
-      return context.players.length >= 4;
+      return context.players.length >= 3;
     },
     allPlayersReady: ({ context }) => {
       return (
-        context.players.length >= 4 &&
+        context.players.length >= 3 &&
         context.players.every((p: Player) => p.isReady || p.isHost)
       );
     },
