@@ -14,6 +14,7 @@ interface PlayerChipProps {
 export function PlayerChip({ name, isHost, isReady, isCurrentPlayer = false, animationDelay = 0 }: PlayerChipProps) {
   return (
     <div
+      data-testid="player-item"
       className={cn(
         "relative h-16 rounded-lg border-2 transition-all duration-300 animate-slide-in",
         isCurrentPlayer

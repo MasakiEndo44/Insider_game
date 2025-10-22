@@ -33,6 +33,12 @@ export default defineConfig({
     // Use PLAYWRIGHT_BASE_URL env var for production testing, default to localhost
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
 
+    // Note: clipboard permissions removed - not supported by Firefox/Webkit
+    // and not needed for this game (no clipboard operations)
+
+    // WebSocketとFetchを許可
+    bypassCSP: true,
+
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
 

@@ -101,7 +101,7 @@ function LobbyContent() {
         />
 
         {/* Players Section */}
-        <div className="bg-card/50 backdrop-blur-sm border border-border rounded-xl p-6 space-y-4">
+        <div className="bg-card/50 backdrop-blur-sm border border-border rounded-xl p-6 space-y-4" data-testid="player-list">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <Users className="w-5 h-5 text-[#E50012]" />
