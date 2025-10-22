@@ -17,6 +17,7 @@ function LobbyContent() {
   const roomId = searchParams.get("roomId") || "DEMO01"
   const passphrase = searchParams.get("passphrase") || "sakura2024"
   const playerName = searchParams.get("playerName") || "ゲスト"
+  const playerId = searchParams.get("playerId") || ""
   const isHost = searchParams.get("isHost") === "true"
 
   // Realtime player data from Supabase
@@ -32,9 +33,18 @@ function LobbyContent() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleStartGame = () => {
-    // Navigate to role assignment screen
-    router.push(`/game/role-assignment?roomId=${roomId}`)
+  const handleStartGame = async () => {
+    try {
+      // Import and call startGame Server Action
+      const { startGame } = await import('@/app/actions/game')
+      await startGame(roomId)
+
+      // Navigate to role assignment screen
+      router.push(`/game/role-assignment?roomId=${roomId}&playerId=${playerId}`)
+    } catch (error) {
+      console.error('[Lobby] Start game error:', error)
+      // TODO: Show error to user
+    }
   }
 
   const handleLeave = () => {

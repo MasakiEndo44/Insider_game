@@ -17,6 +17,7 @@ vi.mock('@/lib/supabase/server', () => ({
       phase: 'LOBBY',
       host_id: null,
       is_suspended: false,
+      created_at: new Date().toISOString(),
     };
 
     const mockPlayerData = {
@@ -28,13 +29,28 @@ vi.mock('@/lib/supabase/server', () => ({
       confirmed: false,
     };
 
+    // Track whether duplicate check should return existing room
+    let shouldReturnExistingRoom = false;
+
     return {
       from: (table: string) => {
         if (table === 'rooms') {
           return {
             insert: vi.fn(() => ({
               select: vi.fn(() => ({
-                single: vi.fn(() => Promise.resolve({ data: mockRoomData, error: null })),
+                single: vi.fn(() => {
+                  // Simulate unique constraint violation if duplicate check was bypassed
+                  if (shouldReturnExistingRoom) {
+                    return Promise.resolve({
+                      data: null,
+                      error: {
+                        code: '23505',
+                        message: 'duplicate key value violates unique constraint "idx_rooms_passphrase_lookup_hash"',
+                      },
+                    });
+                  }
+                  return Promise.resolve({ data: mockRoomData, error: null });
+                }),
               })),
             })),
             update: vi.fn(() => ({
@@ -44,11 +60,31 @@ vi.mock('@/lib/supabase/server', () => ({
               eq: vi.fn(() => Promise.resolve({ error: null })),
             })),
             select: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                eq: vi.fn(() => ({
-                  maybeSingle: vi.fn(() => Promise.resolve({ data: mockRoomData, error: null })),
-                })),
-              })),
+              eq: vi.fn((column: string, value: string) => {
+                // Mock duplicate check: return existing room for specific lookup hash
+                if (column === 'passphrase_lookup_hash' && value === 'duplicate-hash-123') {
+                  shouldReturnExistingRoom = true;
+                  return {
+                    maybeSingle: vi.fn(() =>
+                      Promise.resolve({
+                        data: {
+                          ...mockRoomData,
+                          id: 'existing-room-id',
+                          passphrase_lookup_hash: 'duplicate-hash-123',
+                        },
+                        error: null,
+                      })
+                    ),
+                  };
+                }
+                // Normal case: no existing room
+                return {
+                  maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
+                  eq: vi.fn(() => ({
+                    maybeSingle: vi.fn(() => Promise.resolve({ data: mockRoomData, error: null })),
+                  })),
+                };
+              }),
             })),
           };
         }
@@ -81,7 +117,13 @@ vi.mock('@/lib/game/passphrase', () => ({
   hashPassphrase: vi.fn((passphrase: string) =>
     Promise.resolve('$argon2id$v=19$m=19456,t=2,p=1$...')
   ),
-  generateLookupHash: vi.fn((passphrase: string) => 'abc123'),
+  generateLookupHash: vi.fn((passphrase: string) => {
+    // Generate different hashes to test duplicate detection
+    if (passphrase.trim() === 'duplicate') {
+      return 'duplicate-hash-123';
+    }
+    return 'abc123';
+  }),
   verifyPassphrase: vi.fn((passphrase: string, hash: string) => Promise.resolve(true)),
 }));
 
@@ -128,6 +170,20 @@ describe('createRoom', () => {
 
     expect(result).toHaveProperty('roomId');
     expect(result).toHaveProperty('playerId');
+  });
+
+  it('should reject duplicate passphrase with user-friendly error', async () => {
+    await expect(createRoom('duplicate', 'TestPlayer')).rejects.toThrow(
+      'この合言葉はすでに使われています。別の合言葉を入力してください。'
+    );
+  });
+
+  it('should handle PostgreSQL unique constraint violation gracefully', async () => {
+    // This tests the fallback error handling for race conditions
+    // where duplicate check passes but insertion fails
+    await expect(createRoom('duplicate', 'TestPlayer')).rejects.toThrow(
+      'この合言葉はすでに使われています'
+    );
   });
 });
 

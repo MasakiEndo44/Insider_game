@@ -37,7 +37,28 @@ export async function createRoom(passphrase: string, playerName: string) {
     // 2. Generate deterministic lookup hash for efficient queries
     const lookupHash = generateLookupHash(passphrase.trim());
 
-    // 3. Create room with both hashes
+    // 3. Check if a room with this passphrase already exists
+    const { data: existingRoom, error: checkError } = await supabase
+      .from('rooms')
+      .select('id, phase, created_at')
+      .eq('passphrase_lookup_hash', lookupHash)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('[createRoom] Error checking for existing room:', checkError);
+      throw new Error('ルームの重複チェック中にエラーが発生しました');
+    }
+
+    if (existingRoom) {
+      console.warn('[createRoom] Duplicate passphrase detected:', {
+        existingRoomId: existingRoom.id,
+        phase: existingRoom.phase,
+        lookupHash: lookupHash.substring(0, 8) + '...',
+      });
+      throw new Error('この合言葉はすでに使われています。別の合言葉を入力してください。');
+    }
+
+    // 4. Create room with both hashes
     const { data: room, error: roomError } = await supabase
       .from('rooms')
       .insert({
@@ -50,10 +71,16 @@ export async function createRoom(passphrase: string, playerName: string) {
 
     if (roomError) {
       console.error('[createRoom] Room creation error:', roomError);
+
+      // Handle unique constraint violation as fallback (race condition)
+      if (roomError.code === '23505' || roomError.message.includes('unique constraint')) {
+        throw new Error('この合言葉はすでに使われています。別の合言葉を入力してください。');
+      }
+
       throw new Error(`ルーム作成に失敗しました: ${roomError.message}`);
     }
 
-    // 3. Create host player
+    // 5. Create host player
     const { data: player, error: playerError } = await supabase
       .from('players')
       .insert({
@@ -73,7 +100,7 @@ export async function createRoom(passphrase: string, playerName: string) {
       throw new Error(`プレイヤー作成に失敗しました: ${playerError.message}`);
     }
 
-    // 4. Update room.host_id
+    // 6. Update room.host_id
     const { error: updateError } = await supabase
       .from('rooms')
       .update({ host_id: player.id })

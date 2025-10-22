@@ -1,6 +1,7 @@
 import { test, expect } from '../fixtures/multiContext';
 import { waitForAllPlayers, waitForPhaseTransition } from '../fixtures/helpers';
 import { randomUUID } from 'crypto';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * Focused test for lobby creation, player joining, and game start
@@ -9,12 +10,48 @@ import { randomUUID } from 'crypto';
  * Players: 5 (1 host + 4 peers)
  */
 test.describe('Lobby Multiplayer - Create, Join, Start', () => {
-  // NOTE: Database cleanup is handled manually before test runs
-  // Automatic beforeEach hook disabled due to timing issues
-  // test.beforeEach(async () => {
-  //   const { execSync } = require('child_process');
-  //   execSync('npx supabase db reset --no-seed', { stdio: 'ignore' });
-  // });
+  // Automatic database cleanup before each test
+  test.beforeEach(async () => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false }
+    });
+
+    // Clean up test data in reverse dependency order
+    // Delete all players first (foreign key to rooms)
+    const { error: playersError } = await supabase
+      .from('players')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+
+    if (playersError) {
+      console.warn('[beforeEach] Failed to clean players:', playersError);
+    }
+
+    // Delete all rooms
+    const { error: roomsError } = await supabase
+      .from('rooms')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+
+    if (roomsError) {
+      console.warn('[beforeEach] Failed to clean rooms:', roomsError);
+    }
+
+    // Delete all game sessions
+    const { error: sessionsError } = await supabase
+      .from('game_sessions')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+
+    if (sessionsError) {
+      console.warn('[beforeEach] Failed to clean game_sessions:', sessionsError);
+    }
+
+    console.log('✅ Database cleaned up before test');
+  });
 
   test('host creates lobby, 4 players join, and game starts successfully', async ({
     host,
@@ -320,5 +357,191 @@ test.describe('Lobby Multiplayer - Create, Join, Start', () => {
     });
 
     console.log('\n🎉 Race condition test passed!');
+  });
+
+  test('game start and role assignment verification', async ({
+    host,
+    peers,
+    players,
+  }) => {
+    const passphrase = `role-test-${randomUUID()}`;
+    console.log(`🔑 Role assignment test passphrase: ${passphrase}`);
+
+    await test.step('Setup: Create lobby and join players', async () => {
+      console.log('📍 Setup: Creating lobby with 5 players');
+
+      // Host creates lobby
+      await host.page.goto('/');
+      await host.page.waitForLoadState('networkidle');
+      await host.page.waitForTimeout(3000);
+
+      await host.page.evaluate(() => {
+        const playButton = Array.from(document.querySelectorAll('button')).find(
+          el => el.textContent?.includes('PLAY')
+        );
+        if (playButton) {
+          playButton.click();
+        }
+      });
+
+      await host.page.waitForSelector('input#passphrase', { timeout: 5000 });
+      await host.page.fill('input#passphrase', passphrase);
+      await host.page.fill('input#playerName', host.nickname);
+      await host.page.click('button:has-text("ルームを作る")');
+      await host.page.waitForSelector('[data-testid="player-list"]', { timeout: 15000 });
+      console.log('  ✓ Host created lobby');
+
+      // Peers join in parallel
+      await Promise.all(
+        peers.map(async (peer, index) => {
+          await peer.page.goto('/');
+          await peer.page.waitForLoadState('networkidle');
+          await peer.page.waitForTimeout(3000);
+
+          await peer.page.click('button:has-text("ルームに参加する")', { force: true });
+          await peer.page.waitForSelector('input#join-passphrase', { timeout: 5000 });
+          await peer.page.fill('input#join-passphrase', passphrase);
+          await peer.page.fill('input#join-playerName', peer.nickname);
+
+          await peer.page.waitForFunction(
+            () => {
+              const button = Array.from(document.querySelectorAll('button')).find(
+                (b) => b.textContent?.includes('参加する') && !b.textContent?.includes('キャンセル')
+              ) as HTMLButtonElement;
+              return button && !button.disabled;
+            },
+            { timeout: 5000 }
+          );
+
+          await peer.page.getByRole('button', { name: '参加する', exact: true }).click();
+          await peer.page.waitForSelector('[data-testid="player-list"]', { timeout: 15000 });
+          console.log(`  ✓ Peer ${index + 1} (${peer.nickname}) joined`);
+        })
+      );
+
+      // Wait for Realtime sync
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      console.log('  ✅ All 5 players in lobby');
+    });
+
+    await test.step('Mark all players as ready', async () => {
+      console.log('📍 Step 1: Marking all players as ready (confirmed: true)');
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
+
+      const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: { persistSession: false }
+      });
+
+      // Extract roomId from host URL
+      const hostUrl = host.page.url();
+      const urlParams = new URLSearchParams(hostUrl.split('?')[1]);
+      const roomIdFromUrl = urlParams.get('roomId');
+
+      if (!roomIdFromUrl) {
+        throw new Error('Failed to extract roomId from URL');
+      }
+
+      // Update all players in this room to confirmed: true
+      const { error } = await supabase
+        .from('players')
+        .update({ confirmed: true })
+        .eq('room_id', roomIdFromUrl);
+
+      if (error) {
+        console.error('[markReady] Failed to mark players as ready:', error);
+        throw error;
+      }
+
+      console.log('  ✅ All players marked as ready (confirmed: true)');
+
+      // Wait for UI to reflect the change via Realtime
+      await host.page.waitForTimeout(2000);
+    });
+
+    await test.step('Start game', async () => {
+      console.log('📍 Step 2: Starting game');
+
+      await host.page.click('button:has-text("ゲームを開始")');
+      console.log('  ✓ Clicked start game button');
+
+      // Wait for DEAL phase transition
+      await waitForPhaseTransition(players, 'DEAL', 10000);
+      console.log('  ✅ Game started - all players in DEAL phase');
+    });
+
+    await test.step('Reveal roles and verify assignment', async () => {
+      console.log('📍 Step 3: Revealing and verifying role assignments');
+
+      // Each player clicks "役割を確認" button
+      const roleAssignments: { nickname: string; role: string }[] = [];
+
+      for (const player of players) {
+        // Click reveal role button
+        await player.page.click('button:has-text("役割を確認")');
+        console.log(`  ✓ ${player.nickname} clicked reveal role button`);
+
+        // Wait for role to be displayed
+        await player.page.waitForTimeout(1000);
+
+        // Extract role from UI
+        // Note: Adjust selector based on actual implementation
+        const roleText = await player.page.evaluate(() => {
+          // Try to find role display element
+          const roleElement = document.querySelector('[data-testid="player-role"]');
+          if (roleElement) {
+            return roleElement.textContent || '';
+          }
+
+          // Fallback: search for common role keywords
+          const bodyText = document.body.textContent || '';
+          if (bodyText.includes('マスター')) return 'MASTER';
+          if (bodyText.includes('インサイダー')) return 'INSIDER';
+          if (bodyText.includes('庶民') || bodyText.includes('市民')) return 'CITIZEN';
+          return 'UNKNOWN';
+        });
+
+        roleAssignments.push({
+          nickname: player.nickname,
+          role: roleText
+        });
+
+        console.log(`  📝 ${player.nickname} role: ${roleText}`);
+      }
+
+      // Verify role distribution
+      const masterCount = roleAssignments.filter(r => r.role === 'MASTER').length;
+      const insiderCount = roleAssignments.filter(r => r.role === 'INSIDER').length;
+      const citizenCount = roleAssignments.filter(r => r.role === 'CITIZEN').length;
+
+      console.log(`\n  📊 Role distribution:`);
+      console.log(`    Master: ${masterCount}`);
+      console.log(`    Insider: ${insiderCount}`);
+      console.log(`    Citizen: ${citizenCount}`);
+
+      // Assertions
+      expect(masterCount).toBe(1);
+      expect(insiderCount).toBe(1);
+      expect(citizenCount).toBe(3);
+
+      console.log('  ✅ Role assignment verified: 1 Master, 1 Insider, 3 Citizens');
+
+      // Verify no duplicate roles (Master and Insider must be unique)
+      const masterPlayers = roleAssignments.filter(r => r.role === 'MASTER');
+      const insiderPlayers = roleAssignments.filter(r => r.role === 'INSIDER');
+
+      expect(masterPlayers.length).toBe(1);
+      expect(insiderPlayers.length).toBe(1);
+      expect(masterPlayers[0].nickname).not.toBe(insiderPlayers[0].nickname);
+
+      console.log(`  ✅ No role conflicts: Master is ${masterPlayers[0].nickname}, Insider is ${insiderPlayers[0].nickname}`);
+    });
+
+    console.log('\n🎉 Role assignment test completed successfully!');
+    console.log(`📊 Summary:`);
+    console.log(`  - Passphrase: ${passphrase}`);
+    console.log(`  - Players: ${players.length}`);
+    console.log(`  - Roles verified: Master (1), Insider (1), Citizens (3)`);
   });
 });

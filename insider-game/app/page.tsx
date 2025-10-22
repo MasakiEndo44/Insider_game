@@ -33,7 +33,7 @@ export default function HomePage() {
           <p className="text-sm leading-relaxed text-center text-white text-white">
             マスター、インサイダー、庶民の3つの役職に分かれて遊ぶ推理ゲーム。
           </p>
-          <p className="text-sm leading-relaxed text-center text-card">
+          <p className="text-sm leading-relaxed text-center text-white">
             お題を当てた後、誰がインサイダーかを見つけ出そう。
           </p>
         </div>
