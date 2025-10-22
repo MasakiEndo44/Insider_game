@@ -7,66 +7,43 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
       game_sessions: {
         Row: {
           answerer_id: string | null
-          created_at: string | null
+          created_at: string
           deadline_epoch: number | null
-          difficulty: string
+          difficulty: Database["public"]["Enums"]["difficulty_level"]
           id: string
-          phase: string
           prev_master_id: string | null
           room_id: string
-          start_time: string | null
+          start_time: string
         }
         Insert: {
           answerer_id?: string | null
-          created_at?: string | null
+          created_at?: string
           deadline_epoch?: number | null
-          difficulty: string
+          difficulty?: Database["public"]["Enums"]["difficulty_level"]
           id?: string
-          phase: string
           prev_master_id?: string | null
           room_id: string
-          start_time?: string | null
+          start_time?: string
         }
         Update: {
           answerer_id?: string | null
-          created_at?: string | null
+          created_at?: string
           deadline_epoch?: number | null
-          difficulty?: string
+          difficulty?: Database["public"]["Enums"]["difficulty_level"]
           id?: string
-          phase?: string
           prev_master_id?: string | null
           room_id?: string
-          start_time?: string | null
+          start_time?: string
         }
         Relationships: [
           {
@@ -118,34 +95,34 @@ export type Database = {
       }
       players: {
         Row: {
-          confirmed: boolean | null
+          confirmed: boolean
           id: string
-          is_connected: boolean | null
-          is_host: boolean | null
-          joined_at: string | null
-          last_heartbeat: string | null
+          is_connected: boolean
+          is_host: boolean
+          joined_at: string
+          last_heartbeat: string
           nickname: string
           room_id: string
           user_id: string | null
         }
         Insert: {
-          confirmed?: boolean | null
+          confirmed?: boolean
           id?: string
-          is_connected?: boolean | null
-          is_host?: boolean | null
-          joined_at?: string | null
-          last_heartbeat?: string | null
+          is_connected?: boolean
+          is_host?: boolean
+          joined_at?: string
+          last_heartbeat?: string
           nickname: string
           room_id: string
           user_id?: string | null
         }
         Update: {
-          confirmed?: boolean | null
+          confirmed?: boolean
           id?: string
-          is_connected?: boolean | null
-          is_host?: boolean | null
-          joined_at?: string | null
-          last_heartbeat?: string | null
+          is_connected?: boolean
+          is_host?: boolean
+          joined_at?: string
+          last_heartbeat?: string
           nickname?: string
           room_id?: string
           user_id?: string | null
@@ -162,23 +139,20 @@ export type Database = {
       }
       results: {
         Row: {
-          created_at: string | null
-          id: string
-          outcome: string
+          created_at: string
+          outcome: Database["public"]["Enums"]["game_outcome"]
           revealed_player_id: string | null
           session_id: string
         }
         Insert: {
-          created_at?: string | null
-          id?: string
-          outcome: string
+          created_at?: string
+          outcome: Database["public"]["Enums"]["game_outcome"]
           revealed_player_id?: string | null
           session_id: string
         }
         Update: {
-          created_at?: string | null
-          id?: string
-          outcome?: string
+          created_at?: string
+          outcome?: Database["public"]["Enums"]["game_outcome"]
           revealed_player_id?: string | null
           session_id?: string
         }
@@ -193,7 +167,7 @@ export type Database = {
           {
             foreignKeyName: "results_session_id_fkey"
             columns: ["session_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "game_sessions"
             referencedColumns: ["id"]
           },
@@ -201,24 +175,21 @@ export type Database = {
       }
       roles: {
         Row: {
-          created_at: string | null
-          id: string
+          assigned_at: string
           player_id: string
-          role: string
+          role: Database["public"]["Enums"]["player_role"]
           session_id: string
         }
         Insert: {
-          created_at?: string | null
-          id?: string
+          assigned_at?: string
           player_id: string
-          role: string
+          role: Database["public"]["Enums"]["player_role"]
           session_id: string
         }
         Update: {
-          created_at?: string | null
-          id?: string
+          assigned_at?: string
           player_id?: string
-          role?: string
+          role?: Database["public"]["Enums"]["player_role"]
           session_id?: string
         }
         Relationships: [
@@ -240,64 +211,56 @@ export type Database = {
       }
       rooms: {
         Row: {
-          created_at: string | null
+          created_at: string
           host_id: string | null
           id: string
-          is_suspended: boolean | null
+          is_suspended: boolean
           passphrase_hash: string
-          phase: string
+          passphrase_lookup_hash: string | null
+          phase: Database["public"]["Enums"]["game_phase"]
           suspended_state: Json | null
-          updated_at: string | null
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           host_id?: string | null
           id?: string
-          is_suspended?: boolean | null
+          is_suspended?: boolean
           passphrase_hash: string
-          phase?: string
+          passphrase_lookup_hash?: string | null
+          phase?: Database["public"]["Enums"]["game_phase"]
           suspended_state?: Json | null
-          updated_at?: string | null
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           host_id?: string | null
           id?: string
-          is_suspended?: boolean | null
+          is_suspended?: boolean
           passphrase_hash?: string
-          phase?: string
+          passphrase_lookup_hash?: string | null
+          phase?: Database["public"]["Enums"]["game_phase"]
           suspended_state?: Json | null
-          updated_at?: string | null
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "fk_rooms_host"
-            columns: ["host_id"]
-            isOneToOne: false
-            referencedRelation: "players"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       topics: {
         Row: {
-          created_at: string | null
-          difficulty: string
-          id: string
+          created_at: string
+          difficulty: Database["public"]["Enums"]["difficulty_level"]
           session_id: string
           topic_text: string
         }
         Insert: {
-          created_at?: string | null
-          difficulty: string
-          id?: string
+          created_at?: string
+          difficulty: Database["public"]["Enums"]["difficulty_level"]
           session_id: string
           topic_text: string
         }
         Update: {
-          created_at?: string | null
-          difficulty?: string
-          id?: string
+          created_at?: string
+          difficulty?: Database["public"]["Enums"]["difficulty_level"]
           session_id?: string
           topic_text?: string
         }
@@ -305,30 +268,7 @@ export type Database = {
           {
             foreignKeyName: "topics_session_id_fkey"
             columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "game_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      used_topics: {
-        Row: {
-          session_id: string
-          topic_id: string
-        }
-        Insert: {
-          session_id: string
-          topic_id: string
-        }
-        Update: {
-          session_id?: string
-          topic_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "used_topics_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "game_sessions"
             referencedColumns: ["id"]
           },
@@ -336,31 +276,31 @@ export type Database = {
       }
       votes: {
         Row: {
-          created_at: string | null
+          created_at: string
           id: string
           player_id: string
-          round: number | null
+          round: number
           session_id: string
-          vote_type: string
-          vote_value: string | null
+          vote_type: Database["public"]["Enums"]["vote_type"]
+          vote_value: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           player_id: string
-          round?: number | null
+          round?: number
           session_id: string
-          vote_type: string
-          vote_value?: string | null
+          vote_type: Database["public"]["Enums"]["vote_type"]
+          vote_value: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           player_id?: string
-          round?: number | null
+          round?: number
           session_id?: string
-          vote_type?: string
-          vote_value?: string | null
+          vote_type?: Database["public"]["Enums"]["vote_type"]
+          vote_value?: string
         }
         Relationships: [
           {
@@ -384,10 +324,52 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      assign_roles: { Args: { p_session_id: string }; Returns: undefined }
+      calc_vote_result: {
+        Args: {
+          p_round?: number
+          p_session_id: string
+          p_vote_type: Database["public"]["Enums"]["vote_type"]
+        }
+        Returns: {
+          rank: number
+          vote_count: number
+          vote_value: string
+        }[]
+      }
+      can_see_topic: { Args: { p_session_id: string }; Returns: boolean }
+      ensure_unique_nickname: {
+        Args: { p_nickname: string; p_room_id: string }
+        Returns: string
+      }
+      get_my_role: {
+        Args: { p_session_id: string }
+        Returns: Database["public"]["Enums"]["player_role"]
+      }
+      get_remaining_seconds: { Args: { p_session_id: string }; Returns: number }
+      transition_phase: {
+        Args: {
+          p_deadline_seconds?: number
+          p_new_phase: Database["public"]["Enums"]["game_phase"]
+          p_room_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      difficulty_level: "Easy" | "Normal" | "Hard"
+      game_outcome: "CITIZENS_WIN" | "INSIDER_WIN" | "ALL_LOSE"
+      game_phase:
+        | "LOBBY"
+        | "DEAL"
+        | "TOPIC"
+        | "QUESTION"
+        | "DEBATE"
+        | "VOTE1"
+        | "VOTE2"
+        | "RESULT"
+      player_role: "MASTER" | "INSIDER" | "CITIZEN"
+      vote_type: "VOTE1" | "VOTE2" | "RUNOFF"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -513,11 +495,22 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
-    Enums: {},
+    Enums: {
+      difficulty_level: ["Easy", "Normal", "Hard"],
+      game_outcome: ["CITIZENS_WIN", "INSIDER_WIN", "ALL_LOSE"],
+      game_phase: [
+        "LOBBY",
+        "DEAL",
+        "TOPIC",
+        "QUESTION",
+        "DEBATE",
+        "VOTE1",
+        "VOTE2",
+        "RESULT",
+      ],
+      player_role: ["MASTER", "INSIDER", "CITIZEN"],
+      vote_type: ["VOTE1", "VOTE2", "RUNOFF"],
+    },
   },
 } as const
-

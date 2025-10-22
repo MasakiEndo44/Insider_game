@@ -60,6 +60,9 @@ export async function selectRandomTopics(
 /**
  * Get used topic IDs for a session
  *
+ * TODO: Implement used_topics table for topic tracking
+ * For now, returns empty array (no topic reuse tracking)
+ *
  * @param supabase - Supabase client instance
  * @param sessionId - Game session ID
  * @returns Promise<string[]> - Array of used topic IDs
@@ -68,20 +71,16 @@ export async function getUsedTopicIds(
   supabase: SupabaseClient<Database>,
   sessionId: string
 ): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('used_topics')
-    .select('topic_id')
-    .eq('session_id', sessionId);
-
-  if (error) {
-    throw new Error(`Failed to fetch used topics: ${error.message}`);
-  }
-
-  return data ? data.map((row) => row.topic_id) : [];
+  // Stub implementation - used_topics table not yet created
+  // Will implement topic reuse tracking in future
+  return [];
 }
 
 /**
  * Mark topics as used in a session
+ *
+ * TODO: Implement used_topics table for topic tracking
+ * For now, this is a no-op (no topic reuse tracking)
  *
  * @param supabase - Supabase client instance
  * @param sessionId - Game session ID
@@ -93,14 +92,7 @@ export async function markTopicsAsUsed(
   sessionId: string,
   topicIds: string[]
 ): Promise<void> {
-  const usedTopics = topicIds.map((topicId) => ({
-    session_id: sessionId,
-    topic_id: topicId,
-  }));
-
-  const { error } = await supabase.from('used_topics').insert(usedTopics);
-
-  if (error) {
-    throw new Error(`Failed to mark topics as used: ${error.message}`);
-  }
+  // Stub implementation - used_topics table not yet created
+  // Will implement topic reuse tracking in future
+  return;
 }
