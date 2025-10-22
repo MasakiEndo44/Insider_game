@@ -1,0 +1,321 @@
+
+Running 5 tests using 4 workers
+
+[1A[2K[1/5] [chromium] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+[1A[2K[2/5] [firefox] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+[1A[2K[3/5] [Mobile Chrome] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+[1A[2K[4/5] [webkit] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+[1A[2K[webkit] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+✅ Database cleaned up before test
+
+[1A[2K[firefox] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+✅ Database cleaned up before test
+
+[1A[2K[Mobile Chrome] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+✅ Database cleaned up before test
+
+[1A[2K[chromium] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+✅ Database cleaned up before test
+
+[1A[2K🔑 Role assignment test passphrase: role-test-e099c7b6-a253-486b-aa32-28d691a4ac2e
+
+[1A[2K📍 Setup: Creating lobby with 5 players
+
+[1A[2K[Mobile Chrome] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+🔑 Role assignment test passphrase: role-test-820fd0e0-40b3-4717-9504-cc048a9444a6
+
+[1A[2K📍 Setup: Creating lobby with 5 players
+
+[1A[2K[webkit] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+🔑 Role assignment test passphrase: role-test-1750049e-2b02-42b4-8873-95dbdf9b965f
+
+[1A[2K📍 Setup: Creating lobby with 5 players
+
+[1A[2K[firefox] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+🔑 Role assignment test passphrase: role-test-7daad9d7-dd14-437a-9bba-cc0ed29b762f
+
+[1A[2K📍 Setup: Creating lobby with 5 players
+
+[1A[2K[chromium] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+  ✓ Host created lobby
+
+[1A[2K  ✓ Peer 2 (Player3) joined
+
+[1A[2K  ✓ Peer 3 (Player4) joined
+
+[1A[2K  ✓ Peer 4 (Player5) joined
+
+[1A[2K  ✓ Peer 1 (Player2) joined
+
+[1A[2K  ✅ All 5 players in lobby
+
+[1A[2K📍 Step 1: Marking all players as ready (confirmed: true)
+
+[1A[2K  ✅ All players marked as ready (confirmed: true)
+
+[1A[2K📍 Step 2: Starting game
+
+[1A[2K  ✓ Clicked start game button
+
+[1A[2K  ✓ Host navigated to DEAL phase
+
+[1A[2K  ✓ Peer 3 navigated to DEAL phase
+
+[1A[2K  ✓ Peer 1 navigated to DEAL phase
+
+[1A[2K  ✓ Peer 4 navigated to DEAL phase
+
+[1A[2K  ✓ Peer 2 navigated to DEAL phase
+
+[1A[2K  ✅ Game started - all players in DEAL phase
+
+[1A[2K📍 Step 3: Revealing and verifying role assignments
+
+[1A[2K  ✓ Player1 clicked reveal role button
+
+[1A[2K  1) [Mobile Chrome] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification › Setup: Create lobby and join players 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="player-list"]') to be visible[22m
+
+
+      389 |       await host.page.fill('input#playerName', host.nickname);
+      390 |       await host.page.click('button:has-text("ルームを作る")');
+    > 391 |       await host.page.waitForSelector('[data-testid="player-list"]', { timeout: 15000 });
+          |                       ^
+      392 |       console.log('  ✓ Host created lobby');
+      393 |
+      394 |       // Peers join in parallel
+        at /Users/masaki/Documents/Projects/Insider_game/e2e/tests/lobby-multiplayer.spec.ts:391:23
+        at /Users/masaki/Documents/Projects/Insider_game/e2e/tests/lobby-multiplayer.spec.ts:370:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-Mobile-Chrome/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-Mobile-Chrome/test-failed-5.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-Mobile-Chrome/test-failed-3.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-Mobile-Chrome/test-failed-4.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-Mobile-Chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-Mobile-Chrome/error-context.md
+
+
+[1A[2K  📝 Player1 role: MASTER
+
+[1A[2K  ✓ Player2 clicked reveal role button
+
+[1A[2K  2) [webkit] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification › Setup: Create lobby and join players 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="player-list"]') to be visible[22m
+
+
+      389 |       await host.page.fill('input#playerName', host.nickname);
+      390 |       await host.page.click('button:has-text("ルームを作る")');
+    > 391 |       await host.page.waitForSelector('[data-testid="player-list"]', { timeout: 15000 });
+          |                       ^
+      392 |       console.log('  ✓ Host created lobby');
+      393 |
+      394 |       // Peers join in parallel
+        at /Users/masaki/Documents/Projects/Insider_game/e2e/tests/lobby-multiplayer.spec.ts:391:23
+        at /Users/masaki/Documents/Projects/Insider_game/e2e/tests/lobby-multiplayer.spec.ts:370:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-webkit/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-webkit/test-failed-5.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-webkit/test-failed-4.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-webkit/test-failed-3.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-webkit/error-context.md
+
+
+[1A[2K[5/5] [Mobile Safari] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+[1A[2K[Mobile Safari] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+✅ Database cleaned up before test
+
+[1A[2K[chromium] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+  📝 Player2 role: MASTER
+
+[1A[2K  ✓ Player3 clicked reveal role button
+
+[1A[2K[Mobile Safari] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+🔑 Role assignment test passphrase: role-test-3fed8c51-8965-41e7-aa0d-079ed31a4810
+
+[1A[2K📍 Setup: Creating lobby with 5 players
+
+[1A[2K[chromium] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification
+  📝 Player3 role: MASTER
+
+[1A[2K  ✓ Player4 clicked reveal role button
+
+[1A[2K  3) [firefox] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification › Setup: Create lobby and join players 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="player-list"]') to be visible[22m
+
+
+      389 |       await host.page.fill('input#playerName', host.nickname);
+      390 |       await host.page.click('button:has-text("ルームを作る")');
+    > 391 |       await host.page.waitForSelector('[data-testid="player-list"]', { timeout: 15000 });
+          |                       ^
+      392 |       console.log('  ✓ Host created lobby');
+      393 |
+      394 |       // Peers join in parallel
+        at /Users/masaki/Documents/Projects/Insider_game/e2e/tests/lobby-multiplayer.spec.ts:391:23
+        at /Users/masaki/Documents/Projects/Insider_game/e2e/tests/lobby-multiplayer.spec.ts:370:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-firefox/test-failed-4.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-firefox/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-firefox/test-failed-3.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-firefox/test-failed-5.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-firefox/error-context.md
+
+
+[1A[2K  📝 Player4 role: MASTER
+
+[1A[2K  ✓ Player5 clicked reveal role button
+
+[1A[2K  📝 Player5 role: MASTER
+
+[1A[2K
+  📊 Role distribution:
+
+[1A[2K    Master: 5
+
+[1A[2K    Insider: 0
+
+[1A[2K    Citizen: 0
+
+[1A[2K  4) [chromium] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification › Reveal roles and verify assignment 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m1[39m
+    Received: [31m5[39m
+
+      544 |
+      545 |       // Assertions
+    > 546 |       expect(masterCount).toBe(1);
+          |                           ^
+      547 |       expect(insiderCount).toBe(1);
+      548 |       expect(citizenCount).toBe(3);
+      549 |
+        at /Users/masaki/Documents/Projects/Insider_game/e2e/tests/lobby-multiplayer.spec.ts:546:27
+        at /Users/masaki/Documents/Projects/Insider_game/e2e/tests/lobby-multiplayer.spec.ts:496:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-chromium/test-failed-5.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-chromium/test-failed-3.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-chromium/test-failed-4.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-chromium/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-chromium/error-context.md
+
+
+[1A[2K  5) [Mobile Safari] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification › Setup: Create lobby and join players 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="player-list"]') to be visible[22m
+
+
+      389 |       await host.page.fill('input#playerName', host.nickname);
+      390 |       await host.page.click('button:has-text("ルームを作る")');
+    > 391 |       await host.page.waitForSelector('[data-testid="player-list"]', { timeout: 15000 });
+          |                       ^
+      392 |       console.log('  ✓ Host created lobby');
+      393 |
+      394 |       // Peers join in parallel
+        at /Users/masaki/Documents/Projects/Insider_game/e2e/tests/lobby-multiplayer.spec.ts:391:23
+        at /Users/masaki/Documents/Projects/Insider_game/e2e/tests/lobby-multiplayer.spec.ts:370:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-Mobile-Safari/test-failed-3.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-Mobile-Safari/test-failed-5.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-Mobile-Safari/test-failed-4.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-Mobile-Safari/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-Mobile-Safari/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/tests-lobby-multiplayer-Lo-a5ed4-ole-assignment-verification-Mobile-Safari/error-context.md
+
+
+[1A[2K  5 failed
+    [chromium] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification 
+    [firefox] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification 
+    [webkit] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification 
+    [Mobile Chrome] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification 
+    [Mobile Safari] › e2e/tests/lobby-multiplayer.spec.ts:362:7 › Lobby Multiplayer - Create, Join, Start › game start and role assignment verification 
+
+  Serving HTML report at http://localhost:63530. Press Ctrl+C to quit.

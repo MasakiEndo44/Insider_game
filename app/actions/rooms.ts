@@ -124,6 +124,78 @@ export async function createRoom(passphrase: string, playerName: string) {
 }
 
 /**
+ * Leave a game room and clean up if empty
+ *
+ * @param roomId - Room UUID
+ * @param playerId - Player UUID
+ * @returns {success: boolean, roomDeleted: boolean}
+ * @throws Error if leave fails
+ */
+export async function leaveRoom(roomId: string, playerId: string) {
+  if (!roomId || !playerId) {
+    throw new Error('ルームIDとプレイヤーIDは必須です');
+  }
+
+  const supabase = createServiceClient();
+
+  try {
+    // 1. Delete player from database
+    const { error: deleteError } = await supabase
+      .from('players')
+      .delete()
+      .eq('id', playerId)
+      .eq('room_id', roomId);
+
+    if (deleteError) {
+      console.error('[leaveRoom] Player deletion error:', deleteError);
+      throw new Error(`プレイヤーの退室に失敗しました: ${deleteError.message}`);
+    }
+
+    console.log('[leaveRoom] Player removed:', { roomId, playerId });
+
+    // 2. Check remaining player count
+    const { count: remainingPlayers, error: countError } = await supabase
+      .from('players')
+      .select('*', { count: 'exact', head: true })
+      .eq('room_id', roomId);
+
+    if (countError) {
+      console.error('[leaveRoom] Player count error:', countError);
+      // Non-critical error, continue
+    }
+
+    // 3. If no players left, delete the room
+    if (remainingPlayers === 0) {
+      const { error: roomDeleteError } = await supabase
+        .from('rooms')
+        .delete()
+        .eq('id', roomId);
+
+      if (roomDeleteError) {
+        console.error('[leaveRoom] Room deletion error:', roomDeleteError);
+        // Log but don't throw - player already left successfully
+      } else {
+        console.log('[leaveRoom] Empty room deleted:', { roomId });
+        return {
+          success: true,
+          roomDeleted: true,
+          message: 'プレイヤーが退室し、空のルームが削除されました',
+        };
+      }
+    }
+
+    return {
+      success: true,
+      roomDeleted: false,
+      message: 'プレイヤーが退室しました',
+    };
+  } catch (error) {
+    console.error('[leaveRoom] Unexpected error:', error);
+    throw error instanceof Error ? error : new Error('予期しないエラーが発生しました');
+  }
+}
+
+/**
  * Join an existing game room
  *
  * @param passphrase - Room passphrase to verify

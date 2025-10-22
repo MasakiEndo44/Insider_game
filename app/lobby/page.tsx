@@ -1,14 +1,16 @@
 "use client"
 
-import { useState, Suspense } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { PlayerChip } from "@/components/player-chip"
 import { RoomInfoCard } from "@/components/room-info-card"
 import { GameSettings } from "@/components/game-settings"
 import { useRoomPlayers } from "@/hooks/use-room-players"
-import { Users, Play, LogOut, Crown, Copy, Check } from "lucide-react"
+import { Users, Play, LogOut, Crown, Copy, Check, AlertCircle } from "lucide-react"
 import Image from "next/image"
+import { startGame } from "@/app/actions/game"
+import { createClient } from "@/lib/supabase/client"
 
 function LobbyContent() {
   const router = useRouter()
@@ -23,9 +25,44 @@ function LobbyContent() {
   // Realtime player data from Supabase
   const { players, loading, error } = useRoomPlayers(roomId)
 
+  // Listen for room phase changes
+  // TODO: Uncomment after RLS policies are configured for Realtime
+  // useEffect(() => {
+  //   const supabase = createClient()
+
+  //   // Subscribe to room updates
+  //   const channel = supabase
+  //     .channel(`room:${roomId}`)
+  //     .on(
+  //       'postgres_changes',
+  //       {
+  //         event: 'UPDATE',
+  //         schema: 'public',
+  //         table: 'rooms',
+  //         filter: `id=eq.${roomId}`,
+  //       },
+  //       (payload) => {
+  //         console.log('[Lobby] Room update:', payload)
+  //         const newPhase = (payload.new as any).phase
+
+  //         if (newPhase === 'DEAL') {
+  //           console.log('[Lobby] Phase changed to DEAL, navigating to role assignment...')
+  //           router.push(`/game/role-assignment?roomId=${roomId}&playerId=${playerId}`)
+  //         }
+  //       }
+  //     )
+  //     .subscribe()
+
+  //   return () => {
+  //     channel.unsubscribe()
+  //   }
+  // }, [roomId, playerId, router])
+
   const [copied, setCopied] = useState(false)
   const [timeLimit, setTimeLimit] = useState(5)
   const [category, setCategory] = useState("general")
+  const [startError, setStartError] = useState<string | null>(null)
+  const [isStarting, setIsStarting] = useState(false)
 
   const handleCopyPassphrase = async () => {
     await navigator.clipboard.writeText(passphrase)
@@ -34,16 +71,20 @@ function LobbyContent() {
   }
 
   const handleStartGame = async () => {
+    setIsStarting(true)
+    setStartError(null)
+
     try {
-      // Import and call startGame Server Action
-      const { startGame } = await import('@/app/actions/game')
+      console.log('[Lobby] Starting game for room:', roomId)
       await startGame(roomId)
+      console.log('[Lobby] Game started successfully, navigating...')
 
       // Navigate to role assignment screen
       router.push(`/game/role-assignment?roomId=${roomId}&playerId=${playerId}`)
     } catch (error) {
       console.error('[Lobby] Start game error:', error)
-      // TODO: Show error to user
+      setStartError(error instanceof Error ? error.message : 'ゲーム開始に失敗しました')
+      setIsStarting(false)
     }
   }
 
@@ -109,6 +150,14 @@ function LobbyContent() {
           onCopyPassphrase={handleCopyPassphrase}
           copied={copied}
         />
+
+        {/* Error Message */}
+        {startError && (
+          <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 flex items-start gap-2">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-500">{startError}</p>
+          </div>
+        )}
 
         {/* Players Section */}
         <div className="bg-card/50 backdrop-blur-sm border border-border rounded-xl p-6 space-y-4" data-testid="player-list">
@@ -203,11 +252,11 @@ function LobbyContent() {
           {isHost ? (
             <Button
               onClick={handleStartGame}
-              disabled={!canStart}
+              disabled={!canStart || isStarting}
               className="w-full h-14 text-lg font-bold bg-transparent hover:bg-[#E50012]/10 text-white border-2 border-white rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 hover:border-[#E50012] hover:text-[#E50012] disabled:hover:border-white disabled:hover:text-white"
             >
               <Play className="w-5 h-5 mr-2" />
-              ゲームを開始する
+              {isStarting ? 'ゲーム開始中...' : 'ゲームを開始する'}
             </Button>
           ) : (
             <div className="text-center">

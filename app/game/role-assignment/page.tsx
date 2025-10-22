@@ -29,6 +29,8 @@ function RoleAssignmentContent() {
       return
     }
 
+    console.log('[RoleAssignment] Starting role reveal:', { roomId, playerId });
+
     setLoading(true)
     setError(null)
 
@@ -44,6 +46,8 @@ function RoleAssignmentContent() {
         .limit(1)
         .single()
 
+      console.log('[RoleAssignment] Session fetch result:', { session, sessionError });
+
       if (sessionError || !session) {
         console.error('[RoleAssignment] Session fetch error:', sessionError)
         setError('ゲームセッションが見つかりません')
@@ -52,12 +56,19 @@ function RoleAssignmentContent() {
       }
 
       // Get role for this specific player
+      console.log('[RoleAssignment] Fetching role with params:', {
+        session_id: session.id,
+        player_id: playerId
+      });
+
       const { data: roleData, error: roleError } = await supabase
         .from('roles')
-        .select('role')
+        .select('role, player_id')
         .eq('session_id', session.id)
         .eq('player_id', playerId)
         .single()
+
+      console.log('[RoleAssignment] Role fetch result:', { roleData, roleError });
 
       if (roleError || !roleData) {
         console.error('[RoleAssignment] Role fetch error:', roleError)
@@ -66,6 +77,7 @@ function RoleAssignmentContent() {
         return
       }
 
+      console.log('[RoleAssignment] Setting role:', roleData.role);
       setRole(roleData.role)
       setIsRevealed(true)
       setLoading(false)
