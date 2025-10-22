@@ -5,6 +5,7 @@
     "prettier"
   ],
   "plugins": ["jsx-a11y"],
+  "ignorePatterns": ["**/database.types.ts"],
   "rules": {
     "jsx-a11y/anchor-is-valid": "error",
     "jsx-a11y/click-events-have-key-events": "warn",
