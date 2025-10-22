@@ -10,6 +10,7 @@ import { useRoomPlayers } from "@/hooks/use-room-players"
 import { Users, Play, LogOut, Crown, Copy, Check, AlertCircle } from "lucide-react"
 import Image from "next/image"
 import { startGame } from "@/app/actions/game"
+import { leaveRoom } from "@/app/actions/rooms"
 import { createClient } from "@/lib/supabase/client"
 
 function LobbyContent() {
@@ -26,37 +27,36 @@ function LobbyContent() {
   const { players, loading, error } = useRoomPlayers(roomId)
 
   // Listen for room phase changes
-  // TODO: Uncomment after RLS policies are configured for Realtime
-  // useEffect(() => {
-  //   const supabase = createClient()
+  useEffect(() => {
+    const supabase = createClient()
 
-  //   // Subscribe to room updates
-  //   const channel = supabase
-  //     .channel(`room:${roomId}`)
-  //     .on(
-  //       'postgres_changes',
-  //       {
-  //         event: 'UPDATE',
-  //         schema: 'public',
-  //         table: 'rooms',
-  //         filter: `id=eq.${roomId}`,
-  //       },
-  //       (payload) => {
-  //         console.log('[Lobby] Room update:', payload)
-  //         const newPhase = (payload.new as any).phase
+    // Subscribe to room updates
+    const channel = supabase
+      .channel(`room:${roomId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rooms',
+          filter: `id=eq.${roomId}`,
+        },
+        (payload) => {
+          console.log('[Lobby] Room update:', payload)
+          const newPhase = (payload.new as any).phase
 
-  //         if (newPhase === 'DEAL') {
-  //           console.log('[Lobby] Phase changed to DEAL, navigating to role assignment...')
-  //           router.push(`/game/role-assignment?roomId=${roomId}&playerId=${playerId}`)
-  //         }
-  //       }
-  //     )
-  //     .subscribe()
+          if (newPhase === 'DEAL') {
+            console.log('[Lobby] Phase changed to DEAL, navigating to role assignment...')
+            router.push(`/game/role-assignment?roomId=${roomId}&playerId=${playerId}`)
+          }
+        }
+      )
+      .subscribe()
 
-  //   return () => {
-  //     channel.unsubscribe()
-  //   }
-  // }, [roomId, playerId, router])
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [roomId, playerId, router])
 
   const [copied, setCopied] = useState(false)
   const [timeLimit, setTimeLimit] = useState(5)
@@ -88,9 +88,50 @@ function LobbyContent() {
     }
   }
 
-  const handleLeave = () => {
-    router.push("/")
+  const handleLeave = async () => {
+    try {
+      console.log('[Lobby] Player leaving:', { roomId, playerId })
+
+      if (roomId && playerId) {
+        const result = await leaveRoom(roomId, playerId)
+        console.log('[Lobby] Leave room result:', result)
+
+        if (result.roomDeleted) {
+          console.log('[Lobby] Room was deleted (last player left)')
+        }
+      }
+
+      router.push("/")
+    } catch (error) {
+      console.error('[Lobby] Leave room error:', error)
+      // Navigate anyway to avoid trapping user
+      router.push("/")
+    }
   }
+
+  // Cleanup on page unload (browser close, navigation, etc.)
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      if (roomId && playerId) {
+        try {
+          await leaveRoom(roomId, playerId)
+          console.log('[Lobby] Cleanup on unload completed')
+        } catch (error) {
+          console.error('[Lobby] Cleanup on unload failed:', error)
+        }
+      }
+    }
+
+    // Add event listener for browser close/refresh
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    // Cleanup when component unmounts (navigation)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      // Also cleanup on component unmount
+      handleBeforeUnload()
+    }
+  }, [roomId, playerId])
 
   const readyCount = players.filter((p) => p.confirmed).length
   const canStart = isHost && players.length >= 3 && readyCount === players.length
