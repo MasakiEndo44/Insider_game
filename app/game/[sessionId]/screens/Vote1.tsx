@@ -205,7 +205,7 @@ export function Vote1Screen({
   }, [allVoted, myVote, sessionId, supabase])
 
   return (
-    <div className="min-h-screen circuit-bg circuit-pattern p-4 pb-24">
+    <div className="min-h-screen circuit-bg circuit-pattern p-4 pb-24" data-testid="phase-VOTE1">
       <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
         {/* Header */}
         <div className="text-center space-y-2 pt-4">

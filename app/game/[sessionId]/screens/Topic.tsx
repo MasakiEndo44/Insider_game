@@ -119,7 +119,7 @@ export function TopicScreen({
 
   // MASTER/INSIDER view - can see topic
   return (
-    <div className="min-h-screen circuit-bg circuit-pattern p-4 flex flex-col items-center justify-center">
+    <div className="min-h-screen circuit-bg circuit-pattern p-4 flex flex-col items-center justify-center" data-testid="phase-TOPIC">
       <div className="max-w-2xl w-full space-y-8 animate-fade-in">
         {/* Header */}
         <div className="text-center space-y-2">

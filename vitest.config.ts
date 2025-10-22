@@ -4,6 +4,10 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
+  // Disable edge-runtime shims when running under Node
+  define: {
+    'process.env.NEXT_RUNTIME': '"nodejs"',
+  },
   test: {
     // Split environments: jsdom for Client Components, node for Server Actions/utils
     environment: 'node',
@@ -30,10 +34,6 @@ export default defineConfig({
         '**/test/**',
         '**/e2e/**',
       ],
-    },
-    // Disable edge-runtime shims when running under Node
-    define: {
-      'process.env.NEXT_RUNTIME': '"nodejs"',
     },
   },
 });

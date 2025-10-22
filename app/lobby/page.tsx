@@ -68,7 +68,7 @@ function LobbyContent() {
   }
 
   return (
-    <div className="min-h-screen circuit-bg circuit-pattern p-4 pb-24">
+    <div className="min-h-screen circuit-bg circuit-pattern p-4 pb-24" data-testid="phase-LOBBY">
       <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between">

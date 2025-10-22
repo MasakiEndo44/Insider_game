@@ -104,7 +104,7 @@ export function QuestionScreen({
   const timeWarning = remaining < 60000 // Less than 1 minute
 
   return (
-    <div className="min-h-screen circuit-bg circuit-pattern p-4 pb-24">
+    <div className="min-h-screen circuit-bg circuit-pattern p-4 pb-24" data-testid="phase-QUESTION">
       <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
         {/* Header */}
         <div className="text-center space-y-2 pt-4">
