@@ -4,7 +4,7 @@
  * useRoomPlayers Hook
  *
  * Custom hook for managing room players with Supabase Realtime.
- * Subscribes to `room:{roomId}` channel for real-time player updates.
+ * Subscribes to `players:{roomId}` channel for real-time player updates.
  *
  * Features:
  * - Real-time player list synchronization
@@ -73,7 +73,7 @@ export function useRoomPlayers(roomId: string | null): UseRoomPlayersReturn {
       if (!roomId) return; // TypeScript guard
 
       channel = supabase
-        .channel(`room:${roomId}`)
+        .channel(`players:${roomId}`)
         .on(
           'postgres_changes',
           {
