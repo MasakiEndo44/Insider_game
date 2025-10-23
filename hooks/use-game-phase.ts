@@ -14,6 +14,7 @@ export type GamePhase =
   | 'DEBATE'
   | 'VOTE1'
   | 'VOTE2'
+  | 'VOTE2_RUNOFF'
   | 'RESULT'
 
 interface GamePhaseData {
@@ -21,6 +22,8 @@ interface GamePhaseData {
   deadline_epoch: number | null
   server_now: number // Unix timestamp in seconds for drift correction
   answerer_id: string | null // Player who answered correctly
+  runoff_candidates?: string[] // Tied candidates for runoff voting
+  runoff_round?: number // Runoff round number (2 or 3)
 }
 
 interface UseGamePhaseReturn {
@@ -28,6 +31,8 @@ interface UseGamePhaseReturn {
   deadlineEpoch: number | null
   serverOffset: number // Calculated offset: server_now - client_now
   answererId: string | null
+  runoffRound: number | null // Runoff round number (2 or 3)
+  runoffCandidates: string[] // Tied candidates for runoff voting
   loading: boolean
   error: Error | null
 }
@@ -54,6 +59,8 @@ export function useGamePhase(sessionId: string | null): UseGamePhaseReturn {
   const [deadlineEpoch, setDeadlineEpoch] = useState<number | null>(null)
   const [serverOffset, setServerOffset] = useState(0)
   const [answererId, setAnswererId] = useState<string | null>(null)
+  const [runoffRound, setRunoffRound] = useState<number | null>(null)
+  const [runoffCandidates, setRunoffCandidates] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
@@ -125,6 +132,19 @@ export function useGamePhase(sessionId: string | null): UseGamePhaseReturn {
             setDeadlineEpoch(data.deadline_epoch)
             setServerOffset(offset)
             setAnswererId(data.answerer_id)
+            setRunoffRound(data.runoff_round ?? null)
+            setRunoffCandidates(data.runoff_candidates ?? [])
+          }
+        )
+        .on(
+          'broadcast',
+          { event: 'runoff_required' },
+          (payload) => {
+            console.log('[useGamePhase] Runoff required:', payload)
+
+            const data = payload.payload as { candidates: string[]; round: number }
+            setRunoffRound(data.round)
+            setRunoffCandidates(data.candidates)
           }
         )
         .subscribe((status, err) => {
@@ -158,6 +178,8 @@ export function useGamePhase(sessionId: string | null): UseGamePhaseReturn {
     deadlineEpoch,
     serverOffset,
     answererId,
+    runoffRound,
+    runoffCandidates,
     loading,
     error,
   }

@@ -10,6 +10,7 @@ import { QuestionScreen } from './screens/Question'
 import { DebateScreen } from './screens/Debate'
 import { Vote1Screen } from './screens/Vote1'
 import { Vote2Screen } from './screens/Vote2'
+import { Vote2RunoffScreen } from './screens/Vote2Runoff'
 import { ResultScreen } from './screens/Result'
 
 interface PhaseClientProps {
@@ -25,10 +26,10 @@ interface PhaseClientProps {
  * Renders appropriate screen based on current phase
  *
  * Phase flow:
- * LOBBY → DEAL → TOPIC → QUESTION → DEBATE → VOTE1 → VOTE2 → RESULT
+ * LOBBY → DEAL → TOPIC → QUESTION → DEBATE → VOTE1 → VOTE2 → VOTE2_RUNOFF → RESULT
  */
 export function PhaseClient({ sessionId, playerId, playerName }: PhaseClientProps) {
-  const { phase, deadlineEpoch, serverOffset, answererId, loading, error } = useGamePhase(sessionId)
+  const { phase, deadlineEpoch, serverOffset, answererId, runoffRound, runoffCandidates, loading, error } = useGamePhase(sessionId)
 
   // Loading state
   if (loading) {
@@ -81,6 +82,9 @@ export function PhaseClient({ sessionId, playerId, playerName }: PhaseClientProp
 
     case 'VOTE2':
       return <Vote2Screen {...commonProps} />
+
+    case 'VOTE2_RUNOFF':
+      return <Vote2RunoffScreen {...commonProps} runoffRound={runoffRound} runoffCandidates={runoffCandidates} />
 
     case 'RESULT':
       return <ResultScreen {...commonProps} />

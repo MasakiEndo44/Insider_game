@@ -164,7 +164,16 @@ serve(async (req) => {
 
       // Tie - check if runoff is still possible
       if (currentRound < 3) {
-        // Trigger runoff with top candidates
+        // Update room phase to VOTE2_RUNOFF
+        await updateRoomPhase(room_id, 'VOTE2_RUNOFF')
+
+        // Broadcast phase update with runoff metadata
+        await broadcastPhaseUpdate(session_id, 'VOTE2_RUNOFF', {
+          runoff_candidates: topCandidates,
+          runoff_round: currentRound + 1,
+        })
+
+        // Also send runoff_required broadcast for compatibility
         await broadcast(session_id, 'runoff_required', {
           candidates: topCandidates,
           round: currentRound + 1,
