@@ -5,7 +5,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green)](https://supabase.com/)
 [![License](https://img.shields.io/badge/License-Private-red)]()
 
-5〜8人でプレイする、リアルタイムオンライン多人数対戦の正体隠匿ゲームです。人気ボードゲーム「インサイダーゲーム」をブラウザで遊べるようにし、Discord の音声チャットと連携して楽しめます。
+3〜12人でプレイする、リアルタイムオンライン多人数対戦の正体隠匿ゲームです。人気ボードゲーム「インサイダーゲーム」をブラウザで遊べるようにし、Discord の音声チャットと連携して楽しめます。
 
 🎮 **デモサイト**: [https://insider-game-self.vercel.app](https://insider-game-self.vercel.app)
 📖 **English Version**: [README.en.md](README.en.md)

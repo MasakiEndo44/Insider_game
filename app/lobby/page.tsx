@@ -10,7 +10,7 @@ import { useRoomPlayers } from "@/hooks/use-room-players"
 import { Users, Play, LogOut, Crown, Copy, Check, AlertCircle } from "lucide-react"
 import Image from "next/image"
 import { startGame } from "@/app/actions/game"
-import { leaveRoom } from "@/app/actions/rooms"
+import { leaveRoom, togglePlayerReady } from "@/app/actions/rooms"
 import { createClient } from "@/lib/supabase/client"
 
 function LobbyContent() {
@@ -222,6 +222,13 @@ function LobbyContent() {
                 isReady={player.confirmed ?? false}
                 isCurrentPlayer={player.nickname === playerName}
                 animationDelay={index * 100}
+                onClick={player.nickname === playerName && !player.is_host ? async () => {
+                  try {
+                    await togglePlayerReady(roomId, playerId, !player.confirmed);
+                  } catch (error) {
+                    console.error('[Lobby] Ready toggle failed:', error);
+                  }
+                } : undefined}
               />
             ))}
 

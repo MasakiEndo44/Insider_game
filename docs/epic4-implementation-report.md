@@ -113,7 +113,7 @@ export const supabase = createClient<Database>(
 
 **ロジック**:
 ```
-1. プレイヤーリスト取得（5-8人検証）
+1. プレイヤーリスト取得（3-12人検証）
 2. 前回のMASTERを除外
 3. Fisher-Yates shuffleでランダム化
 4. MASTER/INSIDER/CITIZEN割り当て

@@ -80,7 +80,7 @@ export async function createRoom(passphrase: string, playerName: string) {
       throw new Error(`ルーム作成に失敗しました: ${roomError.message}`);
     }
 
-    // 5. Create host player
+    // 5. Create host player (automatically confirmed)
     const { data: player, error: playerError } = await supabase
       .from('players')
       .insert({
@@ -88,7 +88,7 @@ export async function createRoom(passphrase: string, playerName: string) {
         nickname: playerName.trim(),
         is_host: true,
         is_connected: true,
-        confirmed: false,
+        confirmed: true, // Host is automatically ready
       })
       .select()
       .single();
@@ -191,6 +191,45 @@ export async function leaveRoom(roomId: string, playerId: string) {
     };
   } catch (error) {
     console.error('[leaveRoom] Unexpected error:', error);
+    throw error instanceof Error ? error : new Error('予期しないエラーが発生しました');
+  }
+}
+
+/**
+ * Toggle player ready state
+ *
+ * @param roomId - Room UUID
+ * @param playerId - Player UUID
+ * @param ready - New ready state (true/false)
+ * @returns {success: boolean}
+ * @throws Error if update fails
+ */
+export async function togglePlayerReady(roomId: string, playerId: string, ready: boolean) {
+  if (!roomId || !playerId) {
+    throw new Error('ルームIDとプレイヤーIDは必須です');
+  }
+
+  const supabase = createServiceClient();
+
+  try {
+    const { error } = await supabase
+      .from('players')
+      .update({ confirmed: ready })
+      .eq('room_id', roomId)
+      .eq('id', playerId);
+
+    if (error) {
+      console.error('[togglePlayerReady] Update error:', error);
+      throw new Error(`準備状態の更新に失敗しました: ${error.message}`);
+    }
+
+    console.log('[togglePlayerReady] Success:', { roomId, playerId, ready });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error('[togglePlayerReady] Unexpected error:', error);
     throw error instanceof Error ? error : new Error('予期しないエラーが発生しました');
   }
 }

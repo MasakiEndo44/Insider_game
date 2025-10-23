@@ -31,13 +31,13 @@ export async function startGame(roomId: string) {
       throw new Error(`プレイヤー情報の取得に失敗しました: ${playersError.message}`);
     }
 
-    // 2. Validate player count (5-8 players as per FR-002)
-    if (!players || players.length < 5) {
-      throw new Error('ゲームを開始するには5人以上必要です');
+    // 2. Validate player count (3-12 players as per updated spec)
+    if (!players || players.length < 3) {
+      throw new Error('ゲームを開始するには3人以上必要です');
     }
 
-    if (players.length > 8) {
-      throw new Error('ゲームは最大8人までです');
+    if (players.length > 12) {
+      throw new Error('ゲームは最大12人までです');
     }
 
     // 3. Get previous master ID for exclusion logic (FR-002-1)

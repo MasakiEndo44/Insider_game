@@ -32,16 +32,16 @@
 - `app/actions/game.ts`の`startGame()`が単純な`Math.random()`を使用
 - `lib/game/roles.ts`のFisher-Yatesアルゴリズムが未使用
 - 前回マスター除外ロジック（FR-002-1）が未実装
-- 5-8人制限が3人以上のみチェック
+- 3-12人制限が3人以上のみチェック
 - お題選択が未実装
 
 **実装内容**:
 ```typescript
 // app/actions/game.ts (完全書き直し)
 export async function startGame(roomId: string) {
-  // 1. 5-8人のバリデーション追加
-  if (players.length < 5 || players.length > 8) {
-    throw new Error('ゲームは5〜8人で開始できます');
+  // 1. 3-12人のバリデーション追加
+  if (players.length < 3 || players.length > 12) {
+    throw new Error('ゲームは3〜12人で開始できます');
   }
 
   // 2. 前回マスターID取得
@@ -68,7 +68,7 @@ export async function startGame(roomId: string) {
 - **FR-002**: 役職配布アルゴリズム（Fisher-Yates）
 - **FR-002-1**: 前回マスター除外
 - **FR-003**: お題選択と重複防止
-- **Codex助言**: prev_master排除と5-8人制限
+- **Codex助言**: prev_master排除と3-12人制限
 
 ---
 

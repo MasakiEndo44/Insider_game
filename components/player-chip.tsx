@@ -9,9 +9,12 @@ interface PlayerChipProps {
   isReady: boolean
   isCurrentPlayer?: boolean
   animationDelay?: number
+  onClick?: () => void
 }
 
-export function PlayerChip({ name, isHost, isReady, isCurrentPlayer = false, animationDelay = 0 }: PlayerChipProps) {
+export function PlayerChip({ name, isHost, isReady, isCurrentPlayer = false, animationDelay = 0, onClick }: PlayerChipProps) {
+  const isClickable = isCurrentPlayer && !isHost && onClick;
+
   return (
     <div
       data-testid="player-item"
@@ -21,8 +24,18 @@ export function PlayerChip({ name, isHost, isReady, isCurrentPlayer = false, ani
           ? "bg-[#E50012]/10 border-[#E50012] backdrop-blur-sm"
           : "bg-card/30 border-border backdrop-blur-sm hover:border-white/30",
         isReady && "ring-2 ring-[#10B981]/30",
+        isClickable && "cursor-pointer hover:scale-[1.02] active:scale-[0.98]",
       )}
       style={{ animationDelay: `${animationDelay}ms` }}
+      onClick={isClickable ? onClick : undefined}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={isClickable ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      } : undefined}
     >
       <div className="h-full flex items-center gap-3 px-4">
         {/* Avatar */}
