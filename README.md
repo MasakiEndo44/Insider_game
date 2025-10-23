@@ -4,6 +4,9 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green)](https://supabase.com/)
 [![License](https://img.shields.io/badge/License-Private-red)]()
+[![Phase](https://img.shields.io/badge/Phase%202-60%25-yellow)](https://github.com/masaki/insider-game)
+[![WCAG](https://img.shields.io/badge/WCAG%202.1-AA-brightgreen)](https://www.w3.org/WAI/WCAG21/quickref/)
+[![Tests](https://img.shields.io/badge/E2E%20Tests-Passing-brightgreen)](e2e/)
 
 3〜12人でプレイする、リアルタイムオンライン多人数対戦の正体隠匿ゲームです。人気ボードゲーム「インサイダーゲーム」をブラウザで遊べるようにし、Discord の音声チャットと連携して楽しめます。
 
@@ -82,15 +85,17 @@
   - 色覚異常対応（アイコン+ラベル）
   - jsx-a11y ESLint ルール適用
 
-### 実装中（Phase 2 - ゲームロジック）🚧
-- ✅ **ゲーム画面UI** - 全7フェーズの画面実装完了
-  - 役職配布 (Deal)
-  - お題確認 (Topic)
-  - 質問フェーズ (Question)
-  - 議論フェーズ (Debate)
-  - 投票1 (Vote1)
-  - 投票2 (Vote2)
-  - 結果発表 (Result)
+### 実装中（Phase 2 - ゲームロジック）🚧 [![進捗](https://img.shields.io/badge/進捗-60%25-yellow)](https://github.com/masaki/insider-game)
+
+- ✅ **ゲーム画面UI** - 全7フェーズの画面実装完了（2,534行）
+  - 役職配布 (Deal) - フェーズクライアント統合済み
+  - お題確認 (Topic) - タイマー機能実装済み
+  - 質問フェーズ (Question) - リアルタイム質問投稿
+  - 議論フェーズ (Debate) - 時間継承ロジック
+  - 投票1 (Vote1) - Yes/No投票UI
+  - 投票2 (Vote2) - プレイヤー選択投票
+  - 結果発表 (Result) - 勝敗判定表示
+- ✅ **Server Actions基盤**（985行、6アクション実装）
 
 ### 予定（Phase 2 残タスク）
 - ⏳ XState v5 によるゲーム状態管理
@@ -181,8 +186,15 @@ PASSPHRASE_HMAC_SECRET=your-random-32-byte-secret-here
 
 ### 5. 開発サーバーの起動
 
+**⚠️ 重要**: Supabase を先に起動してから Next.js を起動してください。順序を間違えると PGRST204 エラーが発生します。
+
 ```bash
-npm run dev
+# 推奨: 自動的に正しい順序で起動
+npm run start:dev
+
+# または手動で起動（Supabase が完全に起動するまで待つ）
+npx supabase start   # "Started supabase..." メッセージを待つ
+npm run dev          # Supabase の起動完了後に実行
 # http://localhost:3000 を開く
 ```
 
@@ -306,7 +318,8 @@ insider-game/
 
 ```bash
 # 開発
-npm run dev                # 開発サーバー起動（http://localhost:3000）
+npm run start:dev          # Supabase + Next.js を正しい順序で起動（推奨）
+npm run dev                # Next.js 開発サーバーのみ起動（http://localhost:3000）
 npm run build              # 本番ビルド
 npm run start              # 本番サーバー起動
 
@@ -501,6 +514,29 @@ supabase db remote exec "SELECT * FROM rooms LIMIT 1;"
 
 ### よくある問題
 
+#### "PGRST204: Could not find the 'phase' column in the schema cache"
+**症状**: ゲーム開始時にスキーマキャッシュエラーが発生する
+
+**原因**: PostgREST のスキーマキャッシュが、マイグレーション完了前に構築された（起動時の競合状態）
+
+**即座の対処法**:
+```bash
+# スキーマキャッシュを手動でリロード
+docker exec supabase_db_Insider_game psql -U postgres -d postgres -c "NOTIFY pgrst, 'reload schema';"
+```
+
+**恒久的な解決策**:
+```bash
+# 常に正しい起動順序を守る（Supabase を先に起動）
+npm run start:dev
+
+# または手動で順序を守る
+npx supabase start   # "Started supabase..." を待つ
+npm run dev          # Supabase 起動完了後に実行
+```
+
+**詳細**: [database-schema-cache-fix.md](docs/database-schema-cache-fix.md) を参照
+
 #### "Realtime がローカルで動作しない"
 **解決策**: テーブルで Realtime が有効になっているか確認
 ```bash
@@ -572,18 +608,22 @@ supabase logs
 
 #### Phase 2 - ゲームロジック 🚧 進行中（60%完了）
 
-**✅ 完了**
-- ゲーム画面UI（7フェーズ全画面実装）
-  - Deal (役職配布)
-  - Topic (お題確認)
-  - Question (質問フェーズ)
-  - Debate (議論フェーズ)
-  - Vote1 (第1投票)
-  - Vote2 (第2投票)
-  - Result (結果発表)
-- Server Actions基盤（game.ts, rooms.ts）
+**✅ 完了（実装コード量: 約3,500行）**
+- **ゲーム画面UI**（7フェーズ全画面実装、2,534行）
+  - Deal (役職配布) - [app/game/[sessionId]/screens/Deal.tsx](app/game/[sessionId]/screens/Deal.tsx)
+  - Topic (お題確認) - [app/game/[sessionId]/screens/Topic.tsx](app/game/[sessionId]/screens/Topic.tsx)
+  - Question (質問フェーズ) - [app/game/[sessionId]/screens/Question.tsx](app/game/[sessionId]/screens/Question.tsx)
+  - Debate (議論フェーズ) - [app/game/[sessionId]/screens/Debate.tsx](app/game/[sessionId]/screens/Debate.tsx)
+  - Vote1 (第1投票) - [app/game/[sessionId]/screens/Vote1.tsx](app/game/[sessionId]/screens/Vote1.tsx)
+  - Vote2 (第2投票) - [app/game/[sessionId]/screens/Vote2.tsx](app/game/[sessionId]/screens/Vote2.tsx)
+  - Result (結果発表) - [app/game/[sessionId]/screens/Result.tsx](app/game/[sessionId]/screens/Result.tsx)
+- **Server Actions基盤**（985行）
+  - ルーム管理 - [app/actions/rooms.ts](app/actions/rooms.ts)
+  - ゲームロジック - [app/actions/game.ts](app/actions/game.ts)
+  - React Hooks統合（49箇所）
+  - Server Actions実装（6箇所）
 
-**🚧 実装中**
+**🚧 実装中（残り40%）**
 - ⏳ XState ステートマシン（役職割り当て → 投票）
 - ⏳ タイマー同期（エポックベース）
 - ⏳ 役職割り当てロジック（前回のマスターを除外）

@@ -243,6 +243,17 @@ function LobbyContent() {
             ))}
           </div>
 
+          {/* Guest Instructions */}
+          {!isHost && (
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 flex items-start gap-2">
+              <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-xs text-blue-400">ℹ️</span>
+              </div>
+              <p className="text-sm text-blue-300 font-medium">準備が完了したら、自分の名前を押してください</p>
+            </div>
+          )}
+
+          {/* Minimum Players Warning */}
           {players.length < 3 && (
             <div className="bg-[#E50012]/10 border border-[#E50012]/30 rounded-lg p-3 text-center">
               <p className="text-sm text-[#E50012] font-medium">ゲームを開始するには最低3人必要です</p>
