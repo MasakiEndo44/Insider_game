@@ -88,8 +88,10 @@ export function useGamePhase(sessionId: string | null): UseGamePhaseReturn {
 
         if (roomError) throw roomError
 
-        const serverNow = Math.floor(Date.now() / 1000)
-        const offset = serverNow - Math.floor(Date.now() / 1000)
+        // Get server time via RPC for accurate drift correction
+        const { data: serverTime } = await supabase.rpc('get_server_time')
+        const clientNow = Math.floor(Date.now() / 1000)
+        const offset = serverTime ? (serverTime as number) - clientNow : 0
 
         setPhase(roomData.phase as GamePhase)
         setDeadlineEpoch(data.deadline_epoch)

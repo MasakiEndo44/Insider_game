@@ -140,15 +140,8 @@ export function Vote2Screen({
     setSubmitting(true)
 
     try {
-      const { error } = await supabase.from('votes').insert({
-        session_id: sessionId,
-        player_id: playerId,
-        vote_type: 'VOTE2',
-        vote_value: selectedCandidate,
-        round: 1,
-      })
-
-      if (error) throw error
+      const { submitVote } = await import('@/app/actions/game')
+      await submitVote(sessionId, playerId, 'VOTE2', selectedCandidate, 1)
 
       setMyVote(selectedCandidate)
     } catch (error) {

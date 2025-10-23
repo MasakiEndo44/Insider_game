@@ -71,9 +71,17 @@ export async function getUsedTopicIds(
   supabase: SupabaseClient<Database>,
   sessionId: string
 ): Promise<string[]> {
-  // Stub implementation - used_topics table not yet created
-  // Will implement topic reuse tracking in future
-  return [];
+  const { data, error } = await supabase
+    .from('used_topics')
+    .select('topic_id')
+    .eq('session_id', sessionId);
+
+  if (error) {
+    console.error('[getUsedTopicIds] Error:', error);
+    return [];
+  }
+
+  return data?.map((row) => row.topic_id) || [];
 }
 
 /**
@@ -92,7 +100,19 @@ export async function markTopicsAsUsed(
   sessionId: string,
   topicIds: string[]
 ): Promise<void> {
-  // Stub implementation - used_topics table not yet created
-  // Will implement topic reuse tracking in future
-  return;
+  if (topicIds.length === 0) return;
+
+  const rows = topicIds.map((topicId) => ({
+    session_id: sessionId,
+    topic_id: topicId,
+  }));
+
+  const { error } = await supabase
+    .from('used_topics')
+    .insert(rows);
+
+  if (error) {
+    console.error('[markTopicsAsUsed] Error:', error);
+    throw new Error(`Failed to mark topics as used: ${error.message}`);
+  }
 }

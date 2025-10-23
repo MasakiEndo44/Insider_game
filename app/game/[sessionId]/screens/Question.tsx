@@ -65,21 +65,11 @@ export function QuestionScreen({
       // For now, using playerId as answerer_id (test implementation)
       const answererId = playerId
 
-      // Call report-answer Edge Function
-      const { data, error: functionError } = await supabase.functions.invoke('report-answer', {
-        body: {
-          session_id: sessionId,
-          room_id: sessionData.room_id,
-          answerer_id: answererId,
-          player_id: playerId,
-        },
-      })
+      // Call reportCorrectAnswer Server Action
+      const { reportCorrectAnswer } = await import('@/app/actions/game')
+      await reportCorrectAnswer(sessionId, answererId)
 
-      if (functionError) {
-        throw functionError
-      }
-
-      console.log('[QuestionScreen] Answer reported successfully:', data)
+      console.log('[QuestionScreen] Answer reported successfully')
       // Phase transition will be handled by Realtime broadcast
     } catch (err) {
       console.error('[QuestionScreen] Error reporting answer:', err)
