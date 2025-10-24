@@ -32,8 +32,8 @@ export function assignRoles(
   players: Player[],
   prevMasterId?: string | null
 ): RoleAssignment[] {
-  if (players.length < 4) {
-    throw new Error('Minimum 4 players required');
+  if (players.length < 3) {
+    throw new Error('Minimum 3 players required');
   }
 
   if (players.length > 8) {
@@ -88,8 +88,8 @@ export function getRoleDistribution(playerCount: number): {
   insider: number;
   citizens: number;
 } {
-  if (playerCount < 4 || playerCount > 8) {
-    throw new Error('Player count must be between 4 and 8');
+  if (playerCount < 3 || playerCount > 8) {
+    throw new Error('Player count must be between 3 and 8');
   }
 
   return {
