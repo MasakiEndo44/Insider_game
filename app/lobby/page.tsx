@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button"
 import { PlayerChip } from "@/components/player-chip"
 import { RoomInfoCard } from "@/components/room-info-card"
 import { GameSettings } from "@/components/game-settings"
+import { HostLeftOverlay } from "@/components/host-left-overlay"
 import { useRoomPlayers } from "@/hooks/use-room-players"
+import { useHostPresence } from "@/hooks/use-host-presence"
 import { Users, Play, LogOut, Crown, Copy, Check, AlertCircle } from "lucide-react"
 import Image from "next/image"
 import { startGame } from "@/app/actions/game"
@@ -25,6 +27,13 @@ function LobbyContent() {
 
   // Realtime player data from Supabase
   const { players, loading, error } = useRoomPlayers(roomId)
+
+  // Find host player ID for presence monitoring
+  const hostPlayer = players.find((p) => p.is_host === true)
+  const hostPlayerId = hostPlayer?.id || null
+
+  // Monitor host presence (guests only)
+  const { hostLeft } = useHostPresence(roomId, hostPlayerId, isHost)
 
   // Listen for room phase changes
   useEffect(() => {
@@ -160,8 +169,12 @@ function LobbyContent() {
   }
 
   return (
-    <div className="min-h-screen circuit-bg circuit-pattern p-4 pb-24" data-testid="phase-LOBBY">
-      <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+    <>
+      {/* Host Left Overlay */}
+      <HostLeftOverlay isOpen={hostLeft} />
+
+      <div className="min-h-screen circuit-bg circuit-pattern p-4 pb-24" data-testid="phase-LOBBY">
+        <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -327,7 +340,8 @@ function LobbyContent() {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
 
