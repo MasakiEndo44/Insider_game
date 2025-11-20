@@ -105,7 +105,7 @@ function LobbyContent() {
         const result = await leaveRoom(roomId, playerId)
         console.log('[Lobby] Leave room result:', result)
 
-        if (result.roomDeleted) {
+        if (result.ok && result.roomDeleted) {
           console.log('[Lobby] Room was deleted (last player left)')
         }
       }

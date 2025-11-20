@@ -28,16 +28,25 @@ export function CreateRoomModal({ open, onClose }: CreateRoomModalProps) {
     setError(null)
 
     try {
-      // Call Supabase backend to create room
-      const { roomId, playerId } = await createRoom(passphrase, playerName)
+      // Call Server Action to create room
+      const result = await createRoom(passphrase, playerName)
 
-      // Navigate to lobby with proper UUIDs
+      // Check if the operation was successful
+      if (!result.ok) {
+        // User-friendly error message from server
+        setError(result.message)
+        setIsLoading(false)
+        return
+      }
+
+      // Success: Navigate to lobby with proper UUIDs
       router.push(
-        `/lobby?roomId=${roomId}&passphrase=${encodeURIComponent(passphrase)}&playerName=${encodeURIComponent(playerName)}&playerId=${playerId}&isHost=true`
+        `/lobby?roomId=${result.roomId}&passphrase=${encodeURIComponent(passphrase)}&playerName=${encodeURIComponent(playerName)}&playerId=${result.playerId}&isHost=true`
       )
     } catch (err) {
-      console.error('[CreateRoomModal] Error:', err)
-      setError(err instanceof Error ? err.message : 'ルームの作成に失敗しました')
+      // System errors (database down, network failure, etc.)
+      console.error('[CreateRoomModal] Unexpected error:', err)
+      setError('サーバーエラーが発生しました。しばらくしてからもう一度お試しください。')
       setIsLoading(false)
     }
   }

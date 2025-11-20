@@ -28,16 +28,25 @@ export function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
     setError(null)
 
     try {
-      // Call Supabase backend to join room
-      const { roomId, playerId, nickname } = await joinRoom(passphrase, playerName)
+      // Call Server Action to join room
+      const result = await joinRoom(passphrase, playerName)
 
-      // Navigate to lobby with proper UUIDs
+      // Check if the operation was successful
+      if (!result.ok) {
+        // User-friendly error message from server
+        setError(result.message)
+        setIsLoading(false)
+        return
+      }
+
+      // Success: Navigate to lobby with proper UUIDs
       router.push(
-        `/lobby?roomId=${roomId}&passphrase=${encodeURIComponent(passphrase)}&playerName=${encodeURIComponent(nickname)}&playerId=${playerId}&isHost=false`
+        `/lobby?roomId=${result.roomId}&passphrase=${encodeURIComponent(passphrase)}&playerName=${encodeURIComponent(result.nickname)}&playerId=${result.playerId}&isHost=false`
       )
     } catch (err) {
-      console.error('[JoinRoomModal] Error:', err)
-      setError(err instanceof Error ? err.message : 'ルームへの参加に失敗しました')
+      // System errors (database down, network failure, etc.)
+      console.error('[JoinRoomModal] Unexpected error:', err)
+      setError('サーバーエラーが発生しました。しばらくしてからもう一度お試しください。')
       setIsLoading(false)
     }
   }

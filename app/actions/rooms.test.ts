@@ -166,55 +166,83 @@ describe('createRoom', () => {
   it('should create a room with valid passphrase and player name', async () => {
     const result = await createRoom('test123', 'TestPlayer');
 
-    expect(result).toHaveProperty('roomId');
-    expect(result).toHaveProperty('playerId');
-    expect(result.roomId).toBe('91d0ee93-67fa-4853-9268-2465cb6aab08');
-    expect(result.playerId).toBe('f7a8b9c0-1234-5678-9abc-def012345678');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.roomId).toBe('91d0ee93-67fa-4853-9268-2465cb6aab08');
+      expect(result.playerId).toBe('f7a8b9c0-1234-5678-9abc-def012345678');
+    }
   });
 
   it('should reject passphrase shorter than 3 characters', async () => {
-    await expect(createRoom('ab', 'TestPlayer')).rejects.toThrow(
-      '合言葉は3〜10文字で入力してください'
-    );
+    const result = await createRoom('ab', 'TestPlayer');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe('INVALID_PASSPHRASE');
+      expect(result.message).toBe('合言葉は3〜10文字で入力してください');
+    }
   });
 
   it('should reject passphrase longer than 10 characters', async () => {
-    await expect(createRoom('12345678901', 'TestPlayer')).rejects.toThrow(
-      '合言葉は3〜10文字で入力してください'
-    );
+    const result = await createRoom('12345678901', 'TestPlayer');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe('INVALID_PASSPHRASE');
+      expect(result.message).toBe('合言葉は3〜10文字で入力してください');
+    }
   });
 
   it('should reject empty player name', async () => {
-    await expect(createRoom('test123', '')).rejects.toThrow(
-      'プレイヤー名は1〜20文字で入力してください'
-    );
+    const result = await createRoom('test123', '');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe('INVALID_PLAYER_NAME');
+      expect(result.message).toBe('プレイヤー名は1〜20文字で入力してください');
+    }
   });
 
   it('should reject player name longer than 20 characters', async () => {
-    await expect(createRoom('test123', '123456789012345678901')).rejects.toThrow(
-      'プレイヤー名は1〜20文字で入力してください'
-    );
+    const result = await createRoom('test123', '123456789012345678901');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe('INVALID_PLAYER_NAME');
+      expect(result.message).toBe('プレイヤー名は1〜20文字で入力してください');
+    }
   });
 
   it('should trim whitespace from inputs', async () => {
     const result = await createRoom('  test123  ', '  TestPlayer  ');
 
-    expect(result).toHaveProperty('roomId');
-    expect(result).toHaveProperty('playerId');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.roomId).toBeDefined();
+      expect(result.playerId).toBeDefined();
+    }
   });
 
   it('should reject duplicate passphrase with user-friendly error', async () => {
-    await expect(createRoom('duplicate', 'TestPlayer')).rejects.toThrow(
-      'この合言葉はすでに使われています。別の合言葉を入力してください。'
-    );
+    const result = await createRoom('duplicate', 'TestPlayer');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe('DUPLICATE_PASSPHRASE');
+      expect(result.message).toBe('この合言葉は既に使用されています。別の合言葉を入力してください。');
+    }
   });
 
   it('should handle PostgreSQL unique constraint violation gracefully', async () => {
     // This tests the fallback error handling for race conditions
     // where duplicate check passes but insertion fails
-    await expect(createRoom('duplicate', 'TestPlayer')).rejects.toThrow(
-      'この合言葉はすでに使われています'
-    );
+    const result = await createRoom('duplicate', 'TestPlayer');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe('DUPLICATE_PASSPHRASE');
+      expect(result.message).toContain('この合言葉は既に使用されています');
+    }
   });
 });
 
@@ -233,9 +261,11 @@ describe('leaveRoom', () => {
       'f7a8b9c0-1234-5678-9abc-def012345678'
     );
 
-    expect(result).toHaveProperty('success', true);
-    expect(result).toHaveProperty('roomDeleted', false);
-    expect(result.message).toBe('プレイヤーが退室しました');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.roomDeleted).toBe(false);
+      expect(result.message).toBe('プレイヤーが退室しました');
+    }
   });
 
   // Note: This test is complex due to shared global mock state
@@ -248,15 +278,23 @@ describe('leaveRoom', () => {
   });
 
   it('should reject empty roomId', async () => {
-    await expect(leaveRoom('', 'player-id')).rejects.toThrow(
-      'ルームIDとプレイヤーIDは必須です'
-    );
+    const result = await leaveRoom('', 'player-id');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe('INVALID_ROOM_OR_PLAYER');
+      expect(result.message).toBe('ルームIDとプレイヤーIDは必須です');
+    }
   });
 
   it('should reject empty playerId', async () => {
-    await expect(leaveRoom('room-id', '')).rejects.toThrow(
-      'ルームIDとプレイヤーIDは必須です'
-    );
+    const result = await leaveRoom('room-id', '');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe('INVALID_ROOM_OR_PLAYER');
+      expect(result.message).toBe('ルームIDとプレイヤーIDは必須です');
+    }
   });
 });
 
@@ -268,34 +306,51 @@ describe('joinRoom', () => {
   it('should join a room with valid passphrase and player name', async () => {
     const result = await joinRoom('test123', 'NewPlayer');
 
-    expect(result).toHaveProperty('roomId');
-    expect(result).toHaveProperty('playerId');
-    expect(result).toHaveProperty('nickname');
-    expect(result.roomId).toBe('91d0ee93-67fa-4853-9268-2465cb6aab08');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.roomId).toBe('91d0ee93-67fa-4853-9268-2465cb6aab08');
+      expect(result.playerId).toBeDefined();
+      expect(result.nickname).toBe('NewPlayer');
+    }
   });
 
   it('should reject passphrase shorter than 3 characters', async () => {
-    await expect(joinRoom('ab', 'NewPlayer')).rejects.toThrow(
-      '合言葉は3〜10文字で入力してください'
-    );
+    const result = await joinRoom('ab', 'NewPlayer');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe('INVALID_PASSPHRASE');
+      expect(result.message).toBe('合言葉は3〜10文字で入力してください');
+    }
   });
 
   it('should reject passphrase longer than 10 characters', async () => {
-    await expect(joinRoom('12345678901', 'NewPlayer')).rejects.toThrow(
-      '合言葉は3〜10文字で入力してください'
-    );
+    const result = await joinRoom('12345678901', 'NewPlayer');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe('INVALID_PASSPHRASE');
+      expect(result.message).toBe('合言葉は3〜10文字で入力してください');
+    }
   });
 
   it('should reject empty player name', async () => {
-    await expect(joinRoom('test123', '')).rejects.toThrow(
-      'プレイヤー名は1〜20文字で入力してください'
-    );
+    const result = await joinRoom('test123', '');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe('INVALID_PLAYER_NAME');
+      expect(result.message).toBe('プレイヤー名は1〜20文字で入力してください');
+    }
   });
 
   it('should trim whitespace from inputs', async () => {
     const result = await joinRoom('  test123  ', '  NewPlayer  ');
 
-    expect(result).toHaveProperty('roomId');
-    expect(result).toHaveProperty('playerId');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.roomId).toBeDefined();
+      expect(result.playerId).toBeDefined();
+    }
   });
 });

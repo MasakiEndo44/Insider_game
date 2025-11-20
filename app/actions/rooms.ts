@@ -10,22 +10,80 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import { hashPassphrase, verifyPassphrase, generateLookupHash } from '@/lib/game/passphrase';
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
+/**
+ * Error codes for room operations
+ */
+export type RoomErrorCode =
+  | 'INVALID_PASSPHRASE' // Passphrase validation failed
+  | 'INVALID_PLAYER_NAME' // Player name validation failed
+  | 'INVALID_ROOM_OR_PLAYER' // Room ID or Player ID validation failed
+  | 'DUPLICATE_PASSPHRASE' // Passphrase already in use
+  | 'ROOM_FULL' // Room has reached max capacity (12 players)
+  | 'ROOM_NOT_FOUND' // Room doesn't exist or passphrase incorrect
+  | 'ROOM_SUSPENDED' // Room is suspended, cannot join
+  | 'PLAYER_NOT_FOUND' // Player doesn't exist in room
+  | 'DATABASE_ERROR' // Database operation failed
+  | 'UNKNOWN_ERROR'; // Unexpected error
+
+/**
+ * Result type for createRoom action
+ */
+export type CreateRoomResult =
+  | { ok: true; roomId: string; playerId: string }
+  | { ok: false; code: RoomErrorCode; message: string };
+
+/**
+ * Result type for joinRoom action
+ */
+export type JoinRoomResult =
+  | { ok: true; roomId: string; playerId: string; nickname: string }
+  | { ok: false; code: RoomErrorCode; message: string };
+
+/**
+ * Result type for togglePlayerReady action
+ */
+export type ToggleReadyResult =
+  | { ok: true }
+  | { ok: false; code: RoomErrorCode; message: string };
+
+/**
+ * Result type for leaveRoom action
+ */
+export type LeaveRoomResult =
+  | { ok: true; roomDeleted: boolean; message: string }
+  | { ok: false; code: RoomErrorCode; message: string };
+
+// ============================================================================
+// Server Actions
+// ============================================================================
+
 /**
  * Create a new game room
  *
  * @param passphrase - Room passphrase (3-10 characters, Unicode supported)
  * @param playerName - Player nickname (1-20 characters)
- * @returns {roomId, playerId} - UUIDs for room and player
- * @throws Error if creation fails
+ * @returns CreateRoomResult - Success with IDs or error with code and message
  */
-export async function createRoom(passphrase: string, playerName: string) {
+export async function createRoom(passphrase: string, playerName: string): Promise<CreateRoomResult> {
   // Validate inputs
   if (!passphrase || passphrase.trim().length < 3 || passphrase.trim().length > 10) {
-    throw new Error('合言葉は3〜10文字で入力してください');
+    return {
+      ok: false,
+      code: 'INVALID_PASSPHRASE',
+      message: '合言葉は3〜10文字で入力してください',
+    };
   }
 
   if (!playerName || playerName.trim().length < 1 || playerName.trim().length > 20) {
-    throw new Error('プレイヤー名は1〜20文字で入力してください');
+    return {
+      ok: false,
+      code: 'INVALID_PLAYER_NAME',
+      message: 'プレイヤー名は1〜20文字で入力してください',
+    };
   }
 
   const supabase = createServiceClient();
@@ -46,7 +104,11 @@ export async function createRoom(passphrase: string, playerName: string) {
 
     if (checkError) {
       console.error('[createRoom] Error checking for existing room:', checkError);
-      throw new Error('ルームの重複チェック中にエラーが発生しました');
+      return {
+        ok: false,
+        code: 'DATABASE_ERROR',
+        message: 'ルームの重複チェック中にエラーが発生しました',
+      };
     }
 
     if (existingRoom) {
@@ -55,7 +117,11 @@ export async function createRoom(passphrase: string, playerName: string) {
         phase: existingRoom.phase,
         lookupHash: lookupHash.substring(0, 8) + '...',
       });
-      throw new Error('この合言葉はすでに使われています。別の合言葉を入力してください。');
+      return {
+        ok: false,
+        code: 'DUPLICATE_PASSPHRASE',
+        message: 'この合言葉は既に使用されています。別の合言葉を入力してください。',
+      };
     }
 
     // 4. Create room with both hashes
@@ -74,10 +140,18 @@ export async function createRoom(passphrase: string, playerName: string) {
 
       // Handle unique constraint violation as fallback (race condition)
       if (roomError.code === '23505' || roomError.message.includes('unique constraint')) {
-        throw new Error('この合言葉はすでに使われています。別の合言葉を入力してください。');
+        return {
+          ok: false,
+          code: 'DUPLICATE_PASSPHRASE',
+          message: 'この合言葉は既に使用されています。別の合言葉を入力してください。',
+        };
       }
 
-      throw new Error(`ルーム作成に失敗しました: ${roomError.message}`);
+      return {
+        ok: false,
+        code: 'DATABASE_ERROR',
+        message: `ルーム作成に失敗しました: ${roomError.message}`,
+      };
     }
 
     // 5. Create host player (automatically confirmed)
@@ -97,7 +171,11 @@ export async function createRoom(passphrase: string, playerName: string) {
       console.error('[createRoom] Player creation error:', playerError);
       // Rollback: Delete the created room
       await supabase.from('rooms').delete().eq('id', room.id);
-      throw new Error(`プレイヤー作成に失敗しました: ${playerError.message}`);
+      return {
+        ok: false,
+        code: 'DATABASE_ERROR',
+        message: `プレイヤー作成に失敗しました: ${playerError.message}`,
+      };
     }
 
     // 6. Update room.host_id
@@ -114,12 +192,14 @@ export async function createRoom(passphrase: string, playerName: string) {
     console.log('[createRoom] Success:', { roomId: room.id, playerId: player.id });
 
     return {
-      roomId: room.id, // This is a proper UUID from database
+      ok: true,
+      roomId: room.id,
       playerId: player.id,
     };
   } catch (error) {
     console.error('[createRoom] Unexpected error:', error);
-    throw error instanceof Error ? error : new Error('予期しないエラーが発生しました');
+    // System errors still throw (database down, network failure, etc.)
+    throw error;
   }
 }
 
@@ -131,9 +211,14 @@ export async function createRoom(passphrase: string, playerName: string) {
  * @returns {success: boolean, roomDeleted: boolean}
  * @throws Error if leave fails
  */
-export async function leaveRoom(roomId: string, playerId: string) {
+export async function leaveRoom(roomId: string, playerId: string): Promise<LeaveRoomResult> {
+  // Validate inputs
   if (!roomId || !playerId) {
-    throw new Error('ルームIDとプレイヤーIDは必須です');
+    return {
+      ok: false,
+      code: 'INVALID_ROOM_OR_PLAYER',
+      message: 'ルームIDとプレイヤーIDは必須です',
+    };
   }
 
   const supabase = createServiceClient();
@@ -148,7 +233,11 @@ export async function leaveRoom(roomId: string, playerId: string) {
 
     if (deleteError) {
       console.error('[leaveRoom] Player deletion error:', deleteError);
-      throw new Error(`プレイヤーの退室に失敗しました: ${deleteError.message}`);
+      return {
+        ok: false,
+        code: 'DATABASE_ERROR',
+        message: `プレイヤーの退室に失敗しました: ${deleteError.message}`,
+      };
     }
 
     console.log('[leaveRoom] Player removed:', { roomId, playerId });
@@ -173,11 +262,11 @@ export async function leaveRoom(roomId: string, playerId: string) {
 
       if (roomDeleteError) {
         console.error('[leaveRoom] Room deletion error:', roomDeleteError);
-        // Log but don't throw - player already left successfully
+        // Log but don't fail - player already left successfully
       } else {
         console.log('[leaveRoom] Empty room deleted:', { roomId });
         return {
-          success: true,
+          ok: true,
           roomDeleted: true,
           message: 'プレイヤーが退室し、空のルームが削除されました',
         };
@@ -185,13 +274,17 @@ export async function leaveRoom(roomId: string, playerId: string) {
     }
 
     return {
-      success: true,
+      ok: true,
       roomDeleted: false,
       message: 'プレイヤーが退室しました',
     };
   } catch (error) {
     console.error('[leaveRoom] Unexpected error:', error);
-    throw error instanceof Error ? error : new Error('予期しないエラーが発生しました');
+    return {
+      ok: false,
+      code: 'UNKNOWN_ERROR',
+      message: '予期しないエラーが発生しました',
+    };
   }
 }
 
@@ -204,9 +297,14 @@ export async function leaveRoom(roomId: string, playerId: string) {
  * @returns {success: boolean}
  * @throws Error if update fails
  */
-export async function togglePlayerReady(roomId: string, playerId: string, ready: boolean) {
+export async function togglePlayerReady(roomId: string, playerId: string, ready: boolean): Promise<ToggleReadyResult> {
+  // Validate inputs
   if (!roomId || !playerId) {
-    throw new Error('ルームIDとプレイヤーIDは必須です');
+    return {
+      ok: false,
+      code: 'INVALID_ROOM_OR_PLAYER',
+      message: 'ルームIDとプレイヤーIDは必須です',
+    };
   }
 
   const supabase = createServiceClient();
@@ -220,17 +318,25 @@ export async function togglePlayerReady(roomId: string, playerId: string, ready:
 
     if (error) {
       console.error('[togglePlayerReady] Update error:', error);
-      throw new Error(`準備状態の更新に失敗しました: ${error.message}`);
+      return {
+        ok: false,
+        code: 'DATABASE_ERROR',
+        message: `準備状態の更新に失敗しました: ${error.message}`,
+      };
     }
 
     console.log('[togglePlayerReady] Success:', { roomId, playerId, ready });
 
     return {
-      success: true,
+      ok: true,
     };
   } catch (error) {
     console.error('[togglePlayerReady] Unexpected error:', error);
-    throw error instanceof Error ? error : new Error('予期しないエラーが発生しました');
+    return {
+      ok: false,
+      code: 'UNKNOWN_ERROR',
+      message: '予期しないエラーが発生しました',
+    };
   }
 }
 
@@ -242,14 +348,22 @@ export async function togglePlayerReady(roomId: string, playerId: string, ready:
  * @returns {roomId, playerId} - UUIDs for room and player
  * @throws Error if join fails or passphrase is incorrect
  */
-export async function joinRoom(passphrase: string, playerName: string) {
+export async function joinRoom(passphrase: string, playerName: string): Promise<JoinRoomResult> {
   // Validate inputs
   if (!passphrase || passphrase.trim().length < 3 || passphrase.trim().length > 10) {
-    throw new Error('合言葉は3〜10文字で入力してください');
+    return {
+      ok: false,
+      code: 'INVALID_PASSPHRASE',
+      message: '合言葉は3〜10文字で入力してください',
+    };
   }
 
   if (!playerName || playerName.trim().length < 1 || playerName.trim().length > 20) {
-    throw new Error('プレイヤー名は1〜20文字で入力してください');
+    return {
+      ok: false,
+      code: 'INVALID_PLAYER_NAME',
+      message: 'プレイヤー名は1〜20文字で入力してください',
+    };
   }
 
   const supabase = createServiceClient();
@@ -269,10 +383,32 @@ export async function joinRoom(passphrase: string, playerName: string) {
     // 3. Verify with Argon2id for security (defense in depth)
     if (!room || !(await verifyPassphrase(passphrase.trim(), room.passphrase_hash))) {
       console.error('[joinRoom] Room not found or passphrase verification failed');
-      throw new Error('合言葉が正しくないか、ルームが存在しません');
+      return {
+        ok: false,
+        code: 'ROOM_NOT_FOUND',
+        message: '合言葉が正しくないか、ルームが存在しません',
+      };
     }
 
-    // 3. Check if room is full (max 12 players as per spec)
+    if (roomError) {
+      console.error('[joinRoom] Room query error:', roomError);
+      return {
+        ok: false,
+        code: 'DATABASE_ERROR',
+        message: 'ルーム情報の取得に失敗しました',
+      };
+    }
+
+    // Check if room is suspended
+    if (room.is_suspended) {
+      return {
+        ok: false,
+        code: 'ROOM_SUSPENDED',
+        message: 'このルームは中断中です',
+      };
+    }
+
+    // 4. Check if room is full (max 12 players as per spec)
     const { count: playerCount, error: countError } = await supabase
       .from('players')
       .select('*', { count: 'exact', head: true })
@@ -280,14 +416,22 @@ export async function joinRoom(passphrase: string, playerName: string) {
 
     if (countError) {
       console.error('[joinRoom] Player count error:', countError);
-      throw new Error('ルーム情報の取得に失敗しました');
+      return {
+        ok: false,
+        code: 'DATABASE_ERROR',
+        message: 'ルーム情報の取得に失敗しました',
+      };
     }
 
     if (playerCount !== null && playerCount >= 12) {
-      throw new Error('ルームが満員です（最大12人）');
+      return {
+        ok: false,
+        code: 'ROOM_FULL',
+        message: 'ルームが満員です（最大12人）',
+      };
     }
 
-    // 4. Check if nickname is already taken in this room
+    // 5. Check if nickname is already taken in this room
     const { data: existingPlayer } = await supabase
       .from('players')
       .select('nickname')
@@ -301,7 +445,7 @@ export async function joinRoom(passphrase: string, playerName: string) {
       finalNickname = `${playerName.trim()}-2`;
     }
 
-    // 5. Create player
+    // 6. Create player
     const { data: player, error: playerError } = await supabase
       .from('players')
       .insert({
@@ -316,18 +460,27 @@ export async function joinRoom(passphrase: string, playerName: string) {
 
     if (playerError) {
       console.error('[joinRoom] Player creation error:', playerError);
-      throw new Error(`ルーム参加に失敗しました: ${playerError.message}`);
+      return {
+        ok: false,
+        code: 'DATABASE_ERROR',
+        message: `ルーム参加に失敗しました: ${playerError.message}`,
+      };
     }
 
     console.log('[joinRoom] Success:', { roomId: room.id, playerId: player.id });
 
     return {
+      ok: true,
       roomId: room.id,
       playerId: player.id,
       nickname: finalNickname, // Return actual nickname (may have "-2" suffix)
     };
   } catch (error) {
     console.error('[joinRoom] Unexpected error:', error);
-    throw error instanceof Error ? error : new Error('予期しないエラーが発生しました');
+    return {
+      ok: false,
+      code: 'UNKNOWN_ERROR',
+      message: '予期しないエラーが発生しました',
+    };
   }
 }
