@@ -1,4 +1,27 @@
-# Insider Game V2
+# インサイダーゲーム V2
 
-This is the new version of the Insider Game.
-The previous version has been archived to tag `v1.0.0` and branch `archive/v1`.
+オンラインで遊べる推理ゲーム「インサイダーゲーム」のWebアプリケーション。
+
+## プロジェクト概要
+
+マスター、インサイダー、庶民の3つの役職に分かれて遊ぶ推理ゲーム。音声通話（Discord/LINE等）と併用し、ゲームの進行管理とUI表示を担当するWebアプリです。
+
+- **対象人数**: 3〜12人
+- **プラットフォーム**: Web（モバイルファースト）
+- **技術スタック**: Next.js 15, React 19, TypeScript, Tailwind CSS, Supabase
+
+## ドキュメント
+
+- [システム要件](./SYSTEM_REQUIREMENTS.md) - 機能要件、データモデル、API仕様
+- [デザイン要件](./DESIGN_REQUIREMENTS.md) - UIデザイン、カラーシステム、コンポーネント仕様
+- [UIプロトタイプ](./online-board-game/) - 参考UI実装
+
+## アーカイブ情報
+
+前バージョン（V1）は以下にアーカイブされています：
+- **Tag**: `v1.0.0`
+- **Branch**: `archive/v1`
+
+## 開発状況
+
+現在、要件定義フェーズです。
