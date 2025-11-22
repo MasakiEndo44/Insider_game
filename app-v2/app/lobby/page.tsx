@@ -72,7 +72,7 @@ function LobbyContent() {
     const canStart = isHost && players.length >= 3 && readyCount === players.length
 
     return (
-        <div className="min-h-screen p-4 pt-12 pb-24 flex flex-col items-center">
+        <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px', paddingBottom: '128px' }}>
             <div className="max-w-2xl w-full flex flex-col gap-8 animate-fade-in">
                 {/* Header */}
                 <div className="flex items-center justify-between">
@@ -105,9 +105,9 @@ function LobbyContent() {
                 />
 
                 {/* Players Section */}
-                <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-6 space-y-4">
+                <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-6 flex flex-col" style={{ padding: '24px', gap: '12px' }}>
                     <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                        <h2 className="text-lg font-bold text-foreground flex items-center gap-2" style={{ gap: '8px' }}>
                             <Users className="w-5 h-5 text-game-red" />
                             参加プレイヤー
                             <span className="text-sm font-normal text-foreground/70">({players.length}/12)</span>
@@ -142,7 +142,7 @@ function LobbyContent() {
 
                     {players.length < 3 && (
                         <div className="bg-game-red/10 border border-game-red/30 rounded-lg p-3 text-center">
-                            <p className="text-sm text-game-red font-medium">ゲームを開始するには最低3人必要です</p>
+                            <p className="text-sm text-game-red font-medium" style={{ lineHeight: '1.6' }}>ゲームを開始するには最低3人必要です</p>
                         </div>
                     )}
                 </div>
@@ -158,7 +158,7 @@ function LobbyContent() {
                 )}
 
                 {isHost && (
-                    <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-6">
+                    <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-6" style={{ padding: '24px' }}>
                         <Button
                             onClick={handleStartGame}
                             disabled={!canStart}
@@ -168,20 +168,20 @@ function LobbyContent() {
                             ゲームを開始する
                         </Button>
                         {!canStart && players.length >= 3 && (
-                            <p className="text-xs text-foreground-secondary text-center mt-3">全員が準備完了するまでお待ちください</p>
+                            <p className="text-xs text-foreground-secondary text-center mt-3" style={{ lineHeight: '1.6' }}>全員が準備完了するまでお待ちください</p>
                         )}
                     </div>
                 )}
 
                 {/* Share Info */}
-                <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-4">
+                <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-4" style={{ padding: '24px' }}>
                     <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-full bg-game-red/10 flex items-center justify-center flex-shrink-0">
                             <Copy className="w-5 h-5 text-game-red" />
                         </div>
-                        <div className="flex-1 space-y-1">
-                            <p className="text-sm font-medium text-foreground">友達を招待しよう</p>
-                            <p className="text-xs leading-relaxed text-foreground/80">
+                        <div className="flex-1 flex flex-col" style={{ gap: '4px' }}>
+                            <p className="text-sm font-medium text-foreground" style={{ lineHeight: '1.6' }}>友達を招待しよう</p>
+                            <p className="text-xs leading-relaxed text-foreground/80" style={{ lineHeight: '1.75' }}>
                                 合言葉「<span className="text-game-red font-bold">{passphrase}</span>
                                 」を共有してプレイヤーを招待できます
                             </p>
@@ -208,7 +208,7 @@ function LobbyContent() {
             </div>
 
             {/* Fixed Bottom Action */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t border-border">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t border-border flex justify-center">
                 <div className="max-w-2xl mx-auto">
                     {isHost ? (
                         <Button

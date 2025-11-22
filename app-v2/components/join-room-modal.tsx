@@ -52,11 +52,12 @@ export function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-secondary" />
                             <Input
-                                id="join-passphrase"
-                                placeholder="ホストから共有された合言葉"
+                                id="passphrase"
+                                placeholder="例: sakura2024"
                                 value={passphrase}
                                 onChange={(e) => setPassphrase(e.target.value)}
-                                className="pl-10 h-12"
+                                className="pl-11 h-12"
+                                style={{ paddingLeft: '44px' }}
                                 maxLength={20}
                             />
                         </div>
@@ -69,11 +70,12 @@ export function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                         <div className="relative">
                             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-secondary" />
                             <Input
-                                id="join-playerName"
-                                placeholder="例: はなこ"
+                                id="playerName"
+                                placeholder="例: たろう"
                                 value={playerName}
                                 onChange={(e) => setPlayerName(e.target.value)}
-                                className="pl-10 h-12"
+                                className="pl-11 h-12"
+                                style={{ paddingLeft: '44px' }}
                                 maxLength={10}
                             />
                         </div>

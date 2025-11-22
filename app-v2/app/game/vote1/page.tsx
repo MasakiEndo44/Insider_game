@@ -33,7 +33,7 @@ function Vote1Content() {
     }
 
     return (
-        <div className="min-h-screen p-4 pt-12 flex flex-col items-center">
+        <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px' }}>
             <div className="max-w-md w-full pb-24 flex flex-col gap-8 animate-fade-in">
                 {/* Header */}
                 <div className="text-center space-y-2">
@@ -47,7 +47,7 @@ function Vote1Content() {
                 {/* Question */}
                 {!voted ? (
                     <>
-                        <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-xl p-6 space-y-4 text-center">
+                        <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col text-center" style={{ padding: '24px', gap: '12px' }}>
                             <div className="bg-game-red/10 border border-game-red/30 rounded-lg p-4">
                                 <p className="text-xl font-bold text-foreground mb-1">{answerer} さん</p>
                                 <p className="text-sm text-foreground-secondary">が正解しました</p>

@@ -61,10 +61,10 @@ function TopicContent() {
     // 庶民の場合
     if (role === "common") {
         return (
-            <div className="min-h-screen p-4 pt-12 flex flex-col items-center">
+            <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px' }}>
                 <div className="max-w-md w-full pb-24 flex flex-col gap-8 animate-fade-in">
                     {/* Common Player Card */}
-                    <div className="bg-surface/50 backdrop-blur-sm border-2 border-success rounded-2xl p-8 space-y-6 text-center">
+                    <div className="bg-surface/50 backdrop-blur-sm border-2 border-success rounded-2xl p-8 flex flex-col text-center" style={{ padding: '32px', gap: '12px' }}>
                         <div className="flex justify-center">
                             <div className="w-24 h-24 rounded-full bg-success/20 flex items-center justify-center">
                                 <Image src="/images/common-icon.png" alt="庶民" width={60} height={60} />
@@ -73,9 +73,9 @@ function TopicContent() {
 
                         <h1 className="text-2xl font-black text-foreground">あなたは庶民です</h1>
 
-                        <div className="space-y-3 text-foreground">
-                            <p className="text-base leading-relaxed">質問フェーズでマスターに質問して、お題を当てましょう。</p>
-                            <p className="text-sm text-foreground-secondary">お題は知らされていません。</p>
+                        <div className="flex flex-col text-foreground" style={{ gap: '12px' }}>
+                            <p className="text-base leading-relaxed" style={{ lineHeight: '1.75' }}>質問フェーズでマスターに質問して、お題を当てましょう。</p>
+                            <p className="text-sm text-foreground-secondary" style={{ lineHeight: '1.6' }}>お題は知らされていません。</p>
                         </div>
                     </div>
 
@@ -106,12 +106,12 @@ function TopicContent() {
     const roleIcon = isMaster ? "/images/master-icon.png" : "/images/insider-mark.png"
 
     return (
-        <div className="min-h-screen p-4 pt-12 flex flex-col items-center">
+        <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px' }}>
             <div className="max-w-md w-full pb-24 flex flex-col gap-8 animate-fade-in">
                 {/* Topic Card */}
                 <div
-                    className="bg-surface/50 backdrop-blur-sm border-2 rounded-2xl p-8 space-y-6 text-center relative"
-                    style={{ borderColor: roleColor }}
+                    className="bg-surface/50 backdrop-blur-sm border-2 rounded-2xl p-8 flex flex-col text-center relative"
+                    style={{ borderColor: roleColor, padding: '32px', gap: '12px' }}
                 >
                     {/* Role Icon */}
                     <div className="flex justify-center">
@@ -154,7 +154,7 @@ function TopicContent() {
                     )}
 
                     {/* Instructions */}
-                    <div className="space-y-2 text-foreground text-sm leading-relaxed">
+                    <div className="flex flex-col text-foreground text-sm leading-relaxed" style={{ gap: '8px' }}>
                         {isMaster ? (
                             <>
                                 <p>質問に答えて、庶民がお題を当てられるように誘導してください。</p>

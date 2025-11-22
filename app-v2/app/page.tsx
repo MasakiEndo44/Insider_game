@@ -12,9 +12,9 @@ export default function HomePage() {
   const [showJoinModal, setShowJoinModal] = useState(false)
 
   return (
-    <div className="min-h-screen flex flex-col items-center p-4 pt-12">
+    <div className="min-h-screen flex flex-col items-center p-4" style={{ paddingTop: '64px' }}>
       <div className="w-full max-w-md flex flex-col gap-8 animate-fade-in">
-        <div className="text-center flex flex-col gap-4">
+        <div className="text-center flex flex-col gap-4 items-center">
           <div className="inline-flex items-center justify-center w-32 h-32 mb-4 mx-auto">
             <Image
               src="/images/insider-logo.png"
@@ -29,11 +29,11 @@ export default function HomePage() {
           <p className="text-foreground/90 text-lg font-medium">オンライン推理ゲーム</p>
         </div>
 
-        <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-6 flex flex-col gap-2">
-          <p className="text-sm leading-relaxed text-center text-foreground">
+        <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-6 flex flex-col" style={{ padding: '24px', gap: '8px' }}>
+          <p className="text-sm leading-relaxed text-center text-foreground" style={{ lineHeight: '1.75' }}>
             マスター、インサイダー、庶民の3つの役職に分かれて遊ぶ推理ゲーム。
           </p>
-          <p className="text-sm leading-relaxed text-center text-foreground/80">
+          <p className="text-sm leading-relaxed text-center text-foreground/80" style={{ lineHeight: '1.75' }}>
             お題を当てた後、誰がインサイダーかを見つけ出そう。
           </p>
         </div>

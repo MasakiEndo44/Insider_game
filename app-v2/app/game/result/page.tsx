@@ -58,7 +58,7 @@ function ResultContent() {
     }
 
     return (
-        <div className="min-h-screen p-4 pt-12 pb-32 flex flex-col items-center">
+        <div className="min-h-screen p-4 pb-32 flex flex-col items-center" style={{ paddingTop: '64px' }}>
             <div className="max-w-md w-full flex flex-col gap-6 animate-fade-in">
                 {/* Result Banner */}
                 <div
@@ -96,7 +96,7 @@ function ResultContent() {
                 </div>
 
                 {/* Role Reveal */}
-                <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-xl p-6 space-y-4">
+                <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col" style={{ padding: '24px', gap: '12px' }}>
                     <h2 className="text-lg font-bold text-foreground">役職公開</h2>
 
                     <div className="space-y-3">

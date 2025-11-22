@@ -65,7 +65,7 @@ function DebatePhaseContent() {
     }, [router, roomId])
 
     return (
-        <div className="min-h-screen p-4 pt-12 flex flex-col items-center">
+        <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px' }}>
             <div className="max-w-md w-full flex flex-col gap-8 animate-fade-in">
                 {/* Header */}
                 <div className="text-center space-y-2">
@@ -82,7 +82,7 @@ function DebatePhaseContent() {
                 </div>
 
                 {/* Instructions */}
-                <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-xl p-6 space-y-4">
+                <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col" style={{ padding: '24px', gap: '12px' }}>
                     <h3 className="font-bold text-foreground text-lg">討論の進め方</h3>
                     <div className="text-sm text-foreground leading-relaxed space-y-3">
                         <p>• 正解者をインサイダーとして告発するか議論します</p>

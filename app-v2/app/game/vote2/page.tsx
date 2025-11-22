@@ -37,7 +37,7 @@ function Vote2Content() {
     }
 
     return (
-        <div className="min-h-screen p-4 pt-12 flex flex-col items-center">
+        <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px' }}>
             <div className="max-w-md w-full pb-24 flex flex-col gap-8 animate-fade-in">
                 {/* Header */}
                 <div className="text-center space-y-2">
@@ -51,7 +51,7 @@ function Vote2Content() {
                 {/* Question */}
                 {!voted ? (
                     <>
-                        <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-xl p-6 text-center">
+                        <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col text-center" style={{ padding: '24px', gap: '12px' }}>
                             <p className="text-lg font-bold text-foreground">インサイダーだと思う人を選んでください</p>
                         </div>
 

@@ -87,12 +87,12 @@ function RoleAssignmentContent() {
     const roleInfo = ROLES[assignedRole]
 
     return (
-        <div className="min-h-screen p-4 pt-12 flex flex-col items-center">
+        <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px' }}>
             <div className="max-w-md w-full pb-24 flex flex-col gap-8 animate-fade-in">
                 {/* Role Card */}
                 <div
-                    className="bg-surface/50 backdrop-blur-sm border-2 rounded-2xl p-8 space-y-6 text-center"
-                    style={{ borderColor: roleInfo.color }}
+                    className="bg-surface/50 backdrop-blur-sm border-2 rounded-2xl p-8 flex flex-col text-center"
+                    style={{ borderColor: roleInfo.color, padding: '32px', gap: '12px' }}
                 >
                     {/* Role Icon */}
                     <div className="flex justify-center">
@@ -116,7 +116,7 @@ function RoleAssignmentContent() {
                     </h1>
 
                     {/* Description */}
-                    <p className="text-foreground text-base leading-relaxed">{roleInfo.description}</p>
+                    <p className="text-foreground text-base leading-relaxed" style={{ lineHeight: '1.75' }}>{roleInfo.description}</p>
                 </div>
 
                 {/* Confirm Button */}

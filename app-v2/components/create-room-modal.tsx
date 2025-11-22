@@ -56,7 +56,8 @@ export function CreateRoomModal({ open, onClose }: CreateRoomModalProps) {
                                 placeholder="例: sakura2024"
                                 value={passphrase}
                                 onChange={(e) => setPassphrase(e.target.value)}
-                                className="pl-10 h-12"
+                                className="pl-11 h-12"
+                                style={{ paddingLeft: '44px' }}
                                 maxLength={20}
                             />
                         </div>
@@ -74,7 +75,8 @@ export function CreateRoomModal({ open, onClose }: CreateRoomModalProps) {
                                 placeholder="例: たろう"
                                 value={playerName}
                                 onChange={(e) => setPlayerName(e.target.value)}
-                                className="pl-10 h-12"
+                                className="pl-11 h-12"
+                                style={{ paddingLeft: '44px' }}
                                 maxLength={10}
                             />
                         </div>

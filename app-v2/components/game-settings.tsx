@@ -13,17 +13,17 @@ interface GameSettingsProps {
 
 export function GameSettings({ timeLimit, category, onTimeLimitChange, onCategoryChange }: GameSettingsProps) {
     return (
-        <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-6 space-y-4">
+        <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-6 flex flex-col" style={{ padding: '24px', gap: '12px' }}>
             <div className="flex items-center gap-2">
                 <Settings className="w-5 h-5 text-game-red" />
                 <h2 className="text-lg font-bold text-foreground">ゲーム設定</h2>
                 <span className="text-xs text-foreground/70 ml-auto">ホストのみ変更可能</span>
             </div>
 
-            <div className="space-y-4">
+            <div className="flex flex-col" style={{ gap: '12px' }}>
                 {/* Time Limit */}
-                <div className="space-y-2">
-                    <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                <div className="flex flex-col" style={{ gap: '8px' }}>
+                    <Label className="text-sm font-medium text-foreground flex items-center gap-2" style={{ gap: '8px' }}>
                         <Clock className="w-4 h-4 text-foreground/80" />
                         質問フェーズの制限時間
                     </Label>
@@ -49,8 +49,8 @@ export function GameSettings({ timeLimit, category, onTimeLimitChange, onCategor
                 </div>
 
                 {/* Category */}
-                <div className="space-y-2">
-                    <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                <div className="flex flex-col" style={{ gap: '8px' }}>
+                    <Label className="text-sm font-medium text-foreground flex items-center gap-2" style={{ gap: '8px' }}>
                         <Tag className="w-4 h-4 text-foreground/80" />
                         お題のカテゴリ
                     </Label>
@@ -80,7 +80,7 @@ export function GameSettings({ timeLimit, category, onTimeLimitChange, onCategor
             </div>
 
             <div className="bg-background/30 backdrop-blur-sm rounded-lg p-3 border-2 border-border">
-                <p className="text-xs text-foreground/80 leading-relaxed">
+                <p className="text-xs text-foreground/80 leading-relaxed" style={{ lineHeight: '1.75' }}>
                     設定はゲーム開始前にいつでも変更できます。推奨設定は5分・一般カテゴリです。
                 </p>
             </div>
