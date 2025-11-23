@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Lock, User } from "lucide-react"
-import { mockAPI } from "@/lib/mock-api"
+import { api } from '@/lib/api';
 import { useRoom } from "@/context/room-context"
 import { useGame } from "@/context/game-context"
 
@@ -31,7 +31,7 @@ export function CreateRoomModal({ open, onClose }: CreateRoomModalProps) {
         setIsLoading(true)
 
         try {
-            const { roomId, player } = await mockAPI.createRoom(passphraseInput, playerName)
+            const { roomId, player } = await api.createRoom(passphraseInput, playerName)
 
             // Update Context
             setRoomId(roomId)

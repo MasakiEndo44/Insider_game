@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { ThumbsUp, ThumbsDown, Vote } from "lucide-react"
 import { useGame } from "@/context/game-context"
 import { useRoom } from "@/context/room-context"
-import { mockAPI } from "@/lib/mock-api"
+import { api } from '@/lib/api';
+import { supabase } from "@/lib/supabase/client"
 
 function Vote1Content() {
     const router = useRouter()
@@ -27,16 +28,153 @@ function Vote1Content() {
         }
     }, [roomId, playerId, router])
 
-    // Simulate other players voting
+    // Subscribe to votes to count them (Host only needs this really, but good for UI)
     useEffect(() => {
-        if (!roomId) return
-        const interval = setInterval(() => {
-            setVotedCount((prev) => {
-                if (prev < players.length) return prev + 1
-                return prev
-            })
-        }, 1500)
-        return () => clearInterval(interval)
+        if (!roomId) return;
+
+        // Initial fetch of vote count
+        const fetchVoteCount = async () => {
+            const { data: session } = await supabase
+                .from('game_sessions')
+                .select('id')
+                .eq('room_id', roomId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (session) {
+                const { count } = await supabase
+                    .from('votes')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('session_id', session.id)
+                    .eq('vote_type', 'VOTE1');
+
+                if (count !== null) setVotedCount(count);
+            }
+        };
+        fetchVoteCount();
+
+        const channel = supabase
+            .channel(`votes:${roomId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'votes',
+                },
+                () => {
+                    fetchVoteCount();
+                }
+            )
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel) }
+    }, [roomId]);
+
+    // Host Logic: Check votes and trigger next phase
+    useEffect(() => {
+        const checkVotes = async () => {
+            console.log('Checking votes...', { roomId, playerId, playersLength: players.length });
+            if (!roomId || !playerId) return;
+
+            // Check if I am host
+            const { data: player } = await supabase
+                .from('players')
+                .select('is_host')
+                .eq('id', playerId)
+                .single();
+
+            console.log('Is host check:', player);
+            if (!player?.is_host) return;
+
+            // Get Session
+            const { data: session } = await supabase
+                .from('game_sessions')
+                .select('id')
+                .eq('room_id', roomId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (!session) return;
+
+            // Get Player Count from DB to be safe
+            const { count: playerCount } = await supabase
+                .from('players')
+                .select('*', { count: 'exact', head: true })
+                .eq('room_id', roomId);
+
+            if (!playerCount) return;
+
+            const { count: voteCount } = await supabase
+                .from('votes')
+                .select('*', { count: 'exact', head: true })
+                .eq('session_id', session.id)
+                .eq('vote_type', 'VOTE1');
+
+            if (voteCount === playerCount) {
+                // All voted. Calculate result.
+                // Fetch votes
+                const { data: votes } = await supabase
+                    .from('votes')
+                    .select('vote_value')
+                    .eq('session_id', session.id)
+                    .eq('vote_type', 'VOTE1');
+
+                if (!votes) return;
+
+                const yesVotes = votes.filter((v: any) => v.vote_value === 'yes').length;
+                const noVotes = votes.filter((v: any) => v.vote_value === 'no').length;
+
+                if (yesVotes > noVotes) {
+                    // Majority YES: Suspect Answerer
+                    // Check if Answerer is Insider
+                    const { data: roles } = await supabase
+                        .from('roles')
+                        .select('role, player_id')
+                        .eq('session_id', session.id);
+
+                    // We need to know who is answerer.
+                    // session.answerer_id is needed.
+                    // We need to fetch session with answerer_id.
+                    const { data: sessionFull } = await supabase
+                        .from('game_sessions')
+                        .select('answerer_id')
+                        .eq('id', session.id)
+                        .single();
+
+                    const answererId = sessionFull?.answerer_id;
+                    const answererRole = roles?.find((r: any) => r.player_id === answererId)?.role;
+                    const insiderRole = roles?.find((r: any) => r.role === 'INSIDER');
+
+                    let outcome = 'ALL_LOSE';
+                    if (answererRole === 'INSIDER') {
+                        outcome = 'CITIZENS_WIN'; // Commons win
+                    } else {
+                        outcome = 'INSIDER_WIN'; // Insider wins
+                    }
+
+                    // Insert Result
+                    await supabase.from('results').insert({
+                        session_id: session.id,
+                        outcome,
+                        revealed_player_id: insiderRole?.player_id
+                    });
+
+                    // Update Phase
+                    await api.updatePhase(roomId!, 'RESULT');
+
+                } else {
+                    // Majority NO: Go to Vote 2
+                    await api.updatePhase(roomId!, 'VOTE2');
+                }
+            }
+        };
+
+        // Poll every few seconds if Host
+        const interval = setInterval(checkVotes, 3000);
+        return () => clearInterval(interval);
     }, [roomId, players.length])
 
     const handleVote = async (vote: "yes" | "no") => {
@@ -46,43 +184,12 @@ function Vote1Content() {
         setVoted(true)
 
         try {
-            await mockAPI.submitVote1(roomId, playerId, vote)
-
-            // Wait for others (mock) then proceed
-            setTimeout(() => {
-                // Mock result logic: 
-                // If majority YES -> Vote 2 (Decide who is insider among others? No, Vote 1 is "Is the answerer the insider?")
-                // If YES majority -> Answerer is suspected. If Answerer IS Insider -> Common Win. If Answerer is NOT Insider -> Insider Win (because common guessed wrong).
-                // Actually, the rules are:
-                // 1. Vote: Is the answerer the Insider?
-                // If Majority YES:
-                //    - If Answerer IS Insider: Commons WIN.
-                //    - If Answerer IS NOT Insider: Insider WINS (Commons lose).
-                // If Majority NO:
-                //    - Go to Vote 2 (Who is the Insider?)
-
-                // For mock, let's randomize or force a path.
-                // Let's say 50/50 chance to go to Vote 2.
-                const goToVote2 = Math.random() > 0.5
-
-                if (goToVote2) {
-                    setPhase('VOTE2')
-                    router.push("/game/vote2")
-                } else {
-                    // Result
-                    // Random outcome for mock
-                    const outcomes = ['CITIZENS_WIN', 'INSIDER_WIN'] as const
-                    const outcome = outcomes[Math.floor(Math.random() * outcomes.length)]
-                    setOutcome(outcome)
-                    setPhase('RESULT')
-                    router.push("/game/result")
-                }
-            }, 3000)
+            await api.submitVote1(roomId!, playerId!, vote);
         } catch (error) {
             console.error("Vote failed:", error)
             setVoted(false)
         }
-    }
+    };
 
     return (
         <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px' }}>

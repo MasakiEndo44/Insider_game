@@ -7,31 +7,36 @@ import Image from "next/image"
 import { EyeOff, Clock } from "lucide-react"
 import { useGame } from "@/context/game-context"
 import { useRoom } from "@/context/room-context"
+import { api } from '@/lib/api';
 
 function TopicContent() {
     const router = useRouter()
-    const { roles, topic, setPhase, setTimer } = useGame()
-    const { playerId, players, roomId } = useRoom()
+    const { roles, topic, phase } = useGame()
+    const { playerId, players, roomId, hostId } = useRoom()
 
     const assignedRole = playerId && roles[playerId] ? roles[playerId] : null
-    const role = assignedRole?.toLowerCase() || "common" // Map to lowercase for existing logic if needed, or update logic
+    const role = assignedRole?.toLowerCase() || "common"
 
-    // const [topic, setTopic] = useState("りんご") // Now from context
     const [difficulty, setDifficulty] = useState("Easy")
     const [confirmed, setConfirmed] = useState(false)
-    const [confirmedCount, setConfirmedCount] = useState(1)
     const [insiderTimer, setInsiderTimer] = useState(10)
     const [topicVisible, setTopicVisible] = useState(true)
+
+    const isHost = hostId === playerId
 
     useEffect(() => {
         if (!roomId || !playerId) {
             router.push("/")
             return
         }
-        if (!assignedRole) {
-            router.push("/lobby")
+    }, [roomId, playerId, router])
+
+    // Navigate when phase changes
+    useEffect(() => {
+        if (phase === 'QUESTION') {
+            router.push("/game/question")
         }
-    }, [roomId, playerId, assignedRole, router])
+    }, [phase, router])
 
     useEffect(() => {
         // インサイダーの場合、10秒後にお題を非表示
@@ -51,27 +56,16 @@ function TopicContent() {
         }
     }, [role])
 
-    useEffect(() => {
-        // 確認済みプレイヤー数をシミュレート
-        if (!roomId) return
-        const interval = setInterval(() => {
-            setConfirmedCount((prev) => {
-                if (prev < players.length) return prev + 1
-                return prev
-            })
-        }, 2000)
-
-        return () => clearInterval(interval)
-    }, [roomId, players.length])
-
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
         setConfirmed(true)
-        // 全員確認済みになったら質問フェーズへ
-        setPhase('QUESTION')
-        setTimer(300) // 5 minutes default
-        setTimeout(() => {
-            router.push("/game/question")
-        }, 500)
+        if (isHost) {
+            try {
+                await api.updatePhase(roomId!, 'QUESTION');
+            } catch (error) {
+                console.error("Failed to update phase:", error)
+                setConfirmed(false)
+            }
+        }
     }
 
     if (!assignedRole) {
@@ -109,15 +103,8 @@ function TopicContent() {
                         disabled={confirmed}
                         className="w-full h-14 text-lg font-bold bg-transparent hover:bg-surface/5 text-foreground border-2 border-foreground rounded-xl transition-all duration-200 hover:border-success hover:text-success disabled:opacity-50"
                     >
-                        {confirmed ? "確認済み" : "確認しました"}
+                        {confirmed ? "他のプレイヤーを待っています..." : "確認しました"}
                     </Button>
-
-                    {/* Progress */}
-                    <div className="bg-surface/30 backdrop-blur-sm border border-border rounded-lg p-4 text-center">
-                        <p className="text-sm text-foreground-secondary">
-                            確認済み: <span className="text-game-red font-bold">{confirmedCount}</span> / {players.length}
-                        </p>
-                    </div>
                 </div>
             </div>
         )
@@ -126,7 +113,7 @@ function TopicContent() {
     // マスター・インサイダーの場合
     const isMaster = role === "master"
     const isInsider = role === "insider"
-    const roleColor = isMaster ? "#3B82F6" : "#E50012" // Consider moving these to CSS variables or constants
+    const roleColor = isMaster ? "#3B82F6" : "#E50012"
     const roleIcon = isMaster ? "/images/master-icon.png" : "/images/insider-mark.png"
 
     return (
@@ -202,15 +189,8 @@ function TopicContent() {
                     disabled={confirmed || (isInsider && topicVisible)}
                     className="w-full h-14 text-lg font-bold bg-transparent hover:bg-surface/5 text-foreground border-2 border-foreground rounded-xl transition-all duration-200 hover:border-game-red hover:text-game-red disabled:opacity-50"
                 >
-                    {confirmed ? "確認済み" : isInsider && topicVisible ? `${insiderTimer}秒後に確認可能` : "確認しました"}
+                    {confirmed ? "他のプレイヤーを待っています..." : isInsider && topicVisible ? `${insiderTimer}秒後に確認可能` : "確認しました"}
                 </Button>
-
-                {/* Progress */}
-                <div className="bg-surface/30 backdrop-blur-sm border-2 border-border rounded-lg p-4 text-center">
-                    <p className="text-sm text-foreground/90">
-                        確認済み: <span className="text-game-red font-bold">{confirmedCount}</span> / {players.length}
-                    </p>
-                </div>
             </div>
         </div>
     )

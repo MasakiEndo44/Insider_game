@@ -7,6 +7,7 @@ import Image from "next/image"
 import { Trophy, Clock, RotateCcw, LogOut } from "lucide-react"
 import { useGame } from "@/context/game-context"
 import { useRoom } from "@/context/room-context"
+import { api } from '@/lib/api';
 
 const ROLE_INFO = {
     MASTER: {
@@ -41,17 +42,25 @@ function ResultContent() {
         }
     }, [roomId, router])
 
-    const handleNextRound = () => {
-        // Reset game state
+    const handleNextRound = async () => {
+        // Host triggers new game
+        // Reset game state locally
         setPhase('LOBBY')
         setRoles({})
         setTopic("")
         setOutcome(null)
         setTimer(300)
+
+        // Host updates phase in DB
+        if (roomId) {
+            await api.updatePhase(roomId, 'LOBBY');
+        }
+
         router.push("/lobby")
     }
 
-    const handleLeave = () => {
+    const handleLeave = async () => {
+        // Just client side cleanup for now
         resetRoom()
         router.push("/")
     }

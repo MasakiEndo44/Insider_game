@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation"
 import { Vote, Check } from "lucide-react"
 import { useGame } from "@/context/game-context"
 import { useRoom } from "@/context/room-context"
-import { mockAPI } from "@/lib/mock-api"
+import { api } from '@/lib/api';
+import { supabase } from "@/lib/supabase/client"
 
 function Vote2Content() {
     const router = useRouter()
@@ -45,22 +46,111 @@ function Vote2Content() {
         setVoted(true)
 
         try {
-            await mockAPI.submitVote2(roomId, playerId, targetPlayerId)
-
-            // Wait for others (mock) then proceed
-            setTimeout(() => {
-                // Random result for mock
-                const outcomes = ["CITIZENS_WIN", "INSIDER_WIN"] as const
-                const outcome = outcomes[Math.floor(Math.random() * outcomes.length)]
-                setOutcome(outcome)
-                setPhase('RESULT')
-                router.push("/game/result")
-            }, 3000)
+            await api.submitVote2(roomId!, playerId!, targetPlayerId)
         } catch (error) {
             console.error("Vote failed:", error)
             setVoted(false)
         }
     }
+
+    // Subscribe to votes
+    useEffect(() => {
+        if (!roomId) return;
+        const channel = supabase
+            .channel(`votes2:${roomId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'votes',
+                },
+                async (payload: any) => {
+                    setVotedCount(prev => prev + 1);
+                }
+            )
+            .subscribe();
+        return () => { supabase.removeChannel(channel) }
+    }, [roomId]);
+
+    // Host Logic: Check votes and trigger result
+    useEffect(() => {
+        const checkVotes = async () => {
+            if (!roomId || !players.length) return;
+            const isHost = players.find(p => p.id === playerId)?.isHost;
+            if (!isHost) return;
+
+            const { data: session } = await supabase
+                .from('game_sessions')
+                .select('id')
+                .eq('room_id', roomId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (!session) return;
+
+            const { count } = await supabase
+                .from('votes')
+                .select('*', { count: 'exact', head: true })
+                .eq('session_id', session.id)
+                .eq('vote_type', 'VOTE2');
+
+            if (count === players.length) {
+                // All voted. Calculate result.
+                const { data: votes } = await supabase
+                    .from('votes')
+                    .select('vote_value')
+                    .eq('session_id', session.id)
+                    .eq('vote_type', 'VOTE2');
+
+                if (!votes) return;
+
+                // Count votes for each player
+                const voteCounts: Record<string, number> = {};
+                votes.forEach((v: { vote_value: string }) => {
+                    voteCounts[v.vote_value] = (voteCounts[v.vote_value] || 0) + 1;
+                });
+
+                // Find max voted player
+                let maxVotes = 0;
+                let mostVotedPlayerId = '';
+                Object.entries(voteCounts).forEach(([pid, count]) => {
+                    if (count > maxVotes) {
+                        maxVotes = count;
+                        mostVotedPlayerId = pid;
+                    }
+                });
+
+                // Check if most voted player is Insider
+                const { data: roles } = await supabase
+                    .from('roles')
+                    .select('role, player_id')
+                    .eq('session_id', session.id);
+
+                const suspectedRole = roles?.find((r: { role: string; player_id: string }) => r.player_id === mostVotedPlayerId)?.role;
+                const insiderRole = roles?.find((r: { role: string; player_id: string }) => r.role === 'INSIDER');
+
+                let outcome = 'ALL_LOSE';
+                if (suspectedRole === 'INSIDER') {
+                    outcome = 'CITIZENS_WIN';
+                } else {
+                    outcome = 'INSIDER_WIN';
+                }
+
+                await supabase.from('results').insert({
+                    session_id: session.id,
+                    outcome,
+                    revealed_player_id: insiderRole?.player_id
+                });
+
+                await api.updatePhase(roomId!, 'RESULT');
+            }
+        };
+
+        const interval = setInterval(checkVotes, 3000);
+        return () => clearInterval(interval);
+    }, [roomId, playerId, players]);
 
     return (
         <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px' }}>

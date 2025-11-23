@@ -1,6 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { supabase } from '@/lib/supabase/client';
+import { useRoom } from './room-context';
 
 export type GamePhase =
     | 'LOBBY'
@@ -51,6 +53,7 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export function GameProvider({ children }: { children: ReactNode }) {
     const [state, setState] = useState<GameState>(initialState);
+    const { roomId, playerId } = useRoom();
 
     const setPhase = (phase: GamePhase) => setState(prev => ({ ...prev, phase }));
     const setTimer = (time: number) => setState(prev => ({ ...prev, timer: time }));
@@ -60,6 +63,146 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const setRevealedPlayerId = (id: string | null) => setState(prev => ({ ...prev, revealedPlayerId: id }));
 
     const resetGame = () => setState(initialState);
+
+    // Realtime Subscriptions
+    useEffect(() => {
+        if (!roomId) return;
+
+        const channel = supabase
+            .channel(`game:${roomId}`)
+            // 1. Listen for Phase changes (rooms table)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'rooms',
+                    filter: `id=eq.${roomId}`
+                },
+                (payload) => {
+                    const newPhase = payload.new.phase as GamePhase;
+                    if (newPhase) {
+                        setState(prev => ({ ...prev, phase: newPhase }));
+                    }
+                }
+            )
+            // 2. Listen for Game Session changes (Master / Answerer)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'game_sessions',
+                    filter: `room_id=eq.${roomId}`
+                },
+                (payload) => {
+                    // If new session created or updated
+                    if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                        const session = payload.new;
+                        if (session.answerer_id) {
+                            // Set Master role
+                            setState(prev => ({
+                                ...prev,
+                                roles: { ...prev.roles, [session.answerer_id]: 'MASTER' }
+                            }));
+                        }
+                        // Also handle phase from session if needed? 
+                        // Currently rooms.phase drives the main flow.
+                    }
+                }
+            )
+            // 3. Listen for Roles (My Role)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'roles',
+                    // Filter by my player ID if possible, but RLS handles visibility.
+                    // We can listen to all inserts on roles table for this room's sessions?
+                    // But we don't know session ID easily.
+                    // RLS will only send rows visible to us.
+                    // But we need to know which session.
+                    // Or just listen to all roles?
+                    // If RLS is working, we only receive our role (and maybe Master if public).
+                    // But we need to know which session.
+                    // Let's assume we just listen.
+                },
+                (payload) => {
+                    const roleData = payload.new;
+                    // If this role belongs to me
+                    if (playerId && roleData.player_id === playerId) {
+                        setState(prev => ({
+                            ...prev,
+                            roles: { ...prev.roles, [playerId]: roleData.role as Role }
+                        }));
+                    }
+                }
+            )
+            // 4. Listen for Topics
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'topics',
+                },
+                (payload) => {
+                    const topicData = payload.new;
+                    // If we receive a topic, it means we are allowed to see it
+                    setState(prev => ({ ...prev, topic: topicData.topic_text }));
+                }
+            )
+            .subscribe();
+
+        // Separate channel for results to avoid filter issues or just add to same channel if possible
+        // But results table doesn't have room_id directly, it has session_id.
+        // We need to know session_id.
+        // But we can listen to all results and filter by session_id if we knew it.
+        // Or we can rely on RLS if we select * from results.
+        // But we don't have session_id in state easily (we could store it).
+        // Alternatively, we can listen to 'rooms' phase change to 'RESULT', 
+        // and then fetch the result from Supabase.
+        // That might be safer than listening to a table we don't have a direct ID for.
+        // But let's try to listen to results if we can.
+        // Actually, results table has session_id. game_sessions has room_id.
+        // We can't filter results by room_id directly.
+        // So fetching on phase change is better.
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [roomId, playerId]);
+
+    // Fetch result when phase becomes RESULT
+    useEffect(() => {
+        if (state.phase === 'RESULT' && roomId) {
+            const fetchResult = async () => {
+                // Get latest session for this room
+                const { data: session } = await supabase
+                    .from('game_sessions')
+                    .select('id')
+                    .eq('room_id', roomId)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (session) {
+                    const { data: result } = await supabase
+                        .from('results')
+                        .select('*')
+                        .eq('session_id', session.id)
+                        .single();
+
+                    if (result) {
+                        setOutcome(result.outcome as GameState['outcome']);
+                        setRevealedPlayerId(result.revealed_player_id);
+                    }
+                }
+            };
+            fetchResult();
+        }
+    }, [state.phase, roomId]);
 
     return (
         <GameContext.Provider

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { useGame, Role } from "@/context/game-context"
 import { useRoom } from "@/context/room-context"
+import { api } from '@/lib/api';
 
 interface RoleInfo {
     type: Role
@@ -43,12 +44,11 @@ const ROLES: Record<Role, RoleInfo> = {
 
 function RoleAssignmentContent() {
     const router = useRouter()
-    const { roles, setPhase } = useGame()
-    const { playerId, players, roomId } = useRoom()
+    const { roles, phase } = useGame()
+    const { playerId, players, roomId, hostId } = useRoom()
 
     const [confirmed, setConfirmed] = useState(false)
-    // Mock confirmed count for now, or use real-time if available
-    const [confirmedCount, setConfirmedCount] = useState(1)
+    const isHost = hostId === playerId
 
     const assignedRole = playerId && roles[playerId] ? roles[playerId] : null
 
@@ -57,31 +57,29 @@ function RoleAssignmentContent() {
             router.push("/")
             return
         }
-        if (!assignedRole) {
-            // If no role assigned, maybe go back to lobby?
-            router.push("/lobby")
-        }
-    }, [roomId, playerId, assignedRole, router])
+        // If no role assigned yet, wait or redirect? 
+        // Realtime might take a moment.
+        // But if phase is ROLE_ASSIGNMENT, roles should be there.
+    }, [roomId, playerId, router])
 
-    // Simulate other players confirming
+    // Navigate when phase changes
     useEffect(() => {
-        if (!roomId) return
-        const interval = setInterval(() => {
-            setConfirmedCount((prev) => {
-                if (prev < players.length) return prev + 1
-                return prev
-            })
-        }, 2000)
-        return () => clearInterval(interval)
-    }, [roomId, players.length])
-
-    const handleConfirm = () => {
-        setConfirmed(true)
-        // Navigate to topic screen
-        setPhase('TOPIC')
-        setTimeout(() => {
+        if (phase === 'TOPIC') {
             router.push("/game/topic")
-        }, 500)
+        }
+    }, [phase, router])
+
+    const handleConfirm = async () => {
+        setConfirmed(true)
+        if (isHost) {
+            // Host triggers phase change
+            try {
+                await api.updatePhase(roomId!, 'TOPIC');
+            } catch (error) {
+                console.error("Failed to update phase:", error)
+                setConfirmed(false)
+            }
+        }
     }
 
     if (!assignedRole) {
@@ -133,15 +131,8 @@ function RoleAssignmentContent() {
                     disabled={confirmed}
                     className="w-full h-14 text-lg font-bold bg-transparent hover:bg-surface/5 text-foreground border-2 border-foreground rounded-xl transition-all duration-200 hover:border-game-red hover:text-game-red disabled:opacity-50"
                 >
-                    {confirmed ? "確認済み" : "確認しました"}
+                    {confirmed ? "他のプレイヤーを待っています..." : "確認しました"}
                 </Button>
-
-                {/* Progress */}
-                <div className="bg-surface/30 backdrop-blur-sm border border-border rounded-lg p-4 text-center">
-                    <p className="text-sm text-foreground-secondary">
-                        確認済み: <span className="text-game-red font-bold">{confirmedCount}</span> / {players.length}
-                    </p>
-                </div>
             </div>
         </div>
     )

@@ -8,6 +8,7 @@ import { MessageSquare } from "lucide-react"
 import { QuestionChat, type Question } from "./_components/QuestionChat"
 import { useGame } from "@/context/game-context"
 import { useRoom } from "@/context/room-context"
+import { api } from '@/lib/api';
 
 function TimerRing({ remaining, total, size = 200 }: { remaining: number; total: number; size?: number }) {
     const radius = 45
@@ -47,7 +48,7 @@ function TimerRing({ remaining, total, size = 200 }: { remaining: number; total:
 
 function QuestionPhaseContent() {
     const router = useRouter()
-    const { roles, topic, timer, setTimer, setPhase, setOutcome } = useGame()
+    const { roles, topic, timer, setTimer, setPhase, setOutcome, phase } = useGame()
     const { playerId, roomId } = useRoom()
 
     const assignedRole = playerId && roles[playerId] ? roles[playerId] : null
@@ -62,10 +63,16 @@ function QuestionPhaseContent() {
             router.push("/")
             return
         }
-        if (!assignedRole) {
-            router.push("/lobby")
+    }, [roomId, playerId, router])
+
+    // Navigate when phase changes
+    useEffect(() => {
+        if (phase === 'DEBATE') {
+            router.push("/game/debate")
+        } else if (phase === 'RESULT') {
+            router.push("/game/result")
         }
-    }, [roomId, playerId, assignedRole, router])
+    }, [phase, router])
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -75,18 +82,26 @@ function QuestionPhaseContent() {
         if (timer <= 0) {
             clearInterval(interval)
             // Timeout -> All Lose (or specific rule)
-            setOutcome('ALL_LOSE') // Or timeout specific
-            setPhase('RESULT')
-            router.push("/game/result")
+            // Only Host should trigger phase change on timeout to avoid race conditions
+            if (isMaster && phase !== 'RESULT') {
+                // setOutcome('ALL_LOSE') // This should be synced via DB
+                // api.updatePhase(roomId!, 'RESULT')
+            }
         }
 
         return () => clearInterval(interval)
-    }, [timer, setTimer, router, setOutcome, setPhase])
+    }, [timer, setTimer, isMaster, phase, roomId])
 
-    const handleCorrectAnswer = () => {
+    const handleCorrectAnswer = async () => {
         // 討論フェーズへ（残り時間を引き継ぐ）
-        setPhase('DEBATE')
-        router.push("/game/debate")
+        // setPhase('DEBATE') // Local update not needed if we rely on Realtime
+        if (isMaster) {
+            try {
+                await api.updatePhase(roomId!, 'DEBATE')
+            } catch (error) {
+                console.error("Failed to update phase:", error)
+            }
+        }
     }
 
     const handleAskQuestion = (text: string) => {

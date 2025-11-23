@@ -51,6 +51,16 @@ serve(async (req) => {
             throw insertError;
         }
 
+        // 5. Update game_sessions with answerer_id (Master)
+        const { error: updateError } = await supabase
+            .from('game_sessions')
+            .update({ answerer_id: master.id })
+            .eq('id', session_id);
+
+        if (updateError) {
+            throw updateError;
+        }
+
         return new Response(JSON.stringify({ success: true, count: roles.length }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,

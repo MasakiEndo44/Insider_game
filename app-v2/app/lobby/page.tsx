@@ -10,16 +10,16 @@ import { Users, Play, LogOut, Crown, Copy, Check } from "lucide-react"
 import Image from "next/image"
 import { useRoom } from "@/context/room-context"
 import { useGame } from "@/context/game-context"
-import { mockAPI } from "@/lib/mock-api"
+import { api } from '@/lib/api'
 
 function LobbyContent() {
     const router = useRouter()
-    const { roomId, passphrase, players, hostId, playerId, addPlayer, resetRoom } = useRoom()
-    const { setPhase, setRoles, setTopic } = useGame()
+    const { roomId, passphrase, players, hostId, playerId, resetRoom } = useRoom()
+    const { phase } = useGame()
 
     const [copied, setCopied] = useState(false)
     const [timeLimit, setTimeLimit] = useState(5)
-    const [category, setCategory] = useState("general")
+    const [category, setCategory] = useState("全般") // Must match master_topics.category values
     const [isStarting, setIsStarting] = useState(false)
 
     const isHost = hostId === playerId
@@ -31,26 +31,12 @@ function LobbyContent() {
         }
     }, [roomId, router])
 
-    // Simulate real-time player updates (Mock)
+    // Redirect on phase change
     useEffect(() => {
-        if (!roomId) return
-
-        const interval = setInterval(() => {
-            if (Math.random() > 0.7 && players.length < 12) {
-                const id = `player-${Date.now()}`
-                const newPlayer = {
-                    id,
-                    nickname: `プレイヤー${players.length + 1}`,
-                    isHost: false,
-                    isReady: true, // Auto ready for mock
-                    isConnected: true,
-                }
-                addPlayer(newPlayer)
-            }
-        }, 3000)
-
-        return () => clearInterval(interval)
-    }, [roomId, players.length, addPlayer])
+        if (phase === 'ROLE_ASSIGNMENT') {
+            router.push('/game/role-assignment')
+        }
+    }, [phase, router])
 
     const handleCopyPassphrase = async () => {
         if (passphrase) {
@@ -65,21 +51,8 @@ function LobbyContent() {
 
         setIsStarting(true)
         try {
-            await mockAPI.startGame(roomId)
-
-            // Assign Roles
-            const roles = await mockAPI.assignRoles(players)
-            setRoles(roles)
-
-            // Select Topic
-            const topic = await mockAPI.getTopic(category)
-            setTopic(topic)
-
-            // Update Phase
-            setPhase('ROLE_ASSIGNMENT')
-
-            // Navigate
-            router.push('/game/role-assignment')
+            await api.startGame(roomId, category)
+            // Navigation handled by useEffect on phase change
         } catch (error) {
             console.error("Failed to start game:", error)
             setIsStarting(false)
