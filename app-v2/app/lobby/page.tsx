@@ -1,74 +1,100 @@
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { PlayerChip } from "@/components/player-chip"
 import { RoomInfoCard } from "@/components/room-info-card"
 import { GameSettings } from "@/components/game-settings"
 import { Users, Play, LogOut, Crown, Copy, Check } from "lucide-react"
 import Image from "next/image"
-
-// Mock player data
-const generateMockPlayers = (count: number, hostName: string) => {
-    const names = ["たろう", "はなこ", "けんた", "さくら", "ゆうき", "あい", "だいき", "みお"]
-    return Array.from({ length: count }, (_, i) => ({
-        id: `player-${i}`,
-        name: i === 0 ? hostName : names[i] || `プレイヤー${i + 1}`,
-        isHost: i === 0,
-        isReady: i === 0 ? true : Math.random() > 0.3,
-        joinedAt: Date.now() - (count - i) * 10000,
-    }))
-}
+import { useRoom } from "@/context/room-context"
+import { useGame } from "@/context/game-context"
+import { mockAPI } from "@/lib/mock-api"
 
 function LobbyContent() {
     const router = useRouter()
-    const searchParams = useSearchParams()
+    const { roomId, passphrase, players, hostId, playerId, addPlayer, resetRoom } = useRoom()
+    const { setPhase, setRoles, setTopic } = useGame()
 
-    const roomId = searchParams.get("roomId") || "DEMO01"
-    const passphrase = searchParams.get("passphrase") || "sakura2024"
-    const playerName = searchParams.get("playerName") || "ゲスト"
-    const isHost = searchParams.get("isHost") === "true"
-
-    const [players, setPlayers] = useState(generateMockPlayers(4, playerName))
     const [copied, setCopied] = useState(false)
     const [timeLimit, setTimeLimit] = useState(5)
     const [category, setCategory] = useState("general")
+    const [isStarting, setIsStarting] = useState(false)
 
-    // Simulate real-time player updates
+    const isHost = hostId === playerId
+
+    // Redirect if no room data (e.g. refresh)
     useEffect(() => {
+        if (!roomId) {
+            router.push("/")
+        }
+    }, [roomId, router])
+
+    // Simulate real-time player updates (Mock)
+    useEffect(() => {
+        if (!roomId) return
+
         const interval = setInterval(() => {
             if (Math.random() > 0.7 && players.length < 12) {
+                const id = `player-${Date.now()}`
                 const newPlayer = {
-                    id: `player-${players.length}`,
-                    name: `プレイヤー${players.length + 1}`,
+                    id,
+                    nickname: `プレイヤー${players.length + 1}`,
                     isHost: false,
-                    isReady: false,
-                    joinedAt: Date.now(),
+                    isReady: true, // Auto ready for mock
+                    isConnected: true,
                 }
-                setPlayers((prev) => [...prev, newPlayer])
+                addPlayer(newPlayer)
             }
-        }, 5000)
+        }, 3000)
 
         return () => clearInterval(interval)
-    }, [players.length])
+    }, [roomId, players.length, addPlayer])
 
     const handleCopyPassphrase = async () => {
-        await navigator.clipboard.writeText(passphrase)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
+        if (passphrase) {
+            await navigator.clipboard.writeText(passphrase)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+        }
     }
 
-    const handleStartGame = () => {
-        // Navigate to role assignment screen
-        router.push(`/game/role-assignment?roomId=${roomId}`)
+    const handleStartGame = async () => {
+        if (!roomId || !isHost) return
+
+        setIsStarting(true)
+        try {
+            await mockAPI.startGame(roomId)
+
+            // Assign Roles
+            const roles = await mockAPI.assignRoles(players)
+            setRoles(roles)
+
+            // Select Topic
+            const topic = await mockAPI.getTopic(category)
+            setTopic(topic)
+
+            // Update Phase
+            setPhase('ROLE_ASSIGNMENT')
+
+            // Navigate
+            router.push('/game/role-assignment')
+        } catch (error) {
+            console.error("Failed to start game:", error)
+            setIsStarting(false)
+        }
     }
 
     const handleLeave = () => {
+        resetRoom()
         router.push("/")
     }
 
+    if (!roomId) return null
+
     const readyCount = players.filter((p) => p.isReady).length
+    // For dev/mock, allow starting with fewer players if needed, but UI says 3
     const canStart = isHost && players.length >= 3 && readyCount === players.length
 
     return (
@@ -98,7 +124,7 @@ function LobbyContent() {
                 {/* Room Info */}
                 <RoomInfoCard
                     roomId={roomId}
-                    passphrase={passphrase}
+                    passphrase={passphrase || ""}
                     playerCount={players.length}
                     onCopyPassphrase={handleCopyPassphrase}
                     copied={copied}
@@ -121,10 +147,10 @@ function LobbyContent() {
                         {players.map((player, index) => (
                             <PlayerChip
                                 key={player.id}
-                                name={player.name}
+                                name={player.nickname}
                                 isHost={player.isHost}
                                 isReady={player.isReady}
-                                isCurrentPlayer={player.name === playerName}
+                                isCurrentPlayer={player.id === playerId}
                                 animationDelay={index * 100}
                             />
                         ))}
@@ -161,11 +187,11 @@ function LobbyContent() {
                     <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-6" style={{ padding: '24px' }}>
                         <Button
                             onClick={handleStartGame}
-                            disabled={!canStart}
+                            disabled={!canStart || isStarting}
                             className="w-full h-16 text-lg font-bold bg-transparent hover:bg-game-red/10 text-foreground border-2 border-foreground rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 hover:border-game-red hover:text-game-red disabled:hover:border-foreground disabled:hover:text-foreground"
                         >
                             <Play className="w-6 h-6 mr-2" />
-                            ゲームを開始する
+                            {isStarting ? "開始中..." : "ゲームを開始する"}
                         </Button>
                         {!canStart && players.length >= 3 && (
                             <p className="text-xs text-foreground-secondary text-center mt-3" style={{ lineHeight: '1.6' }}>全員が準備完了するまでお待ちください</p>
@@ -213,11 +239,11 @@ function LobbyContent() {
                     {isHost ? (
                         <Button
                             onClick={handleStartGame}
-                            disabled={!canStart}
+                            disabled={!canStart || isStarting}
                             className="w-full h-14 text-lg font-bold bg-transparent hover:bg-game-red/10 border-2 border-foreground/80 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 hover:border-game-red hover:text-game-red disabled:hover:border-foreground/80 disabled:hover:text-foreground text-foreground"
                         >
                             <Play className="w-5 h-5 mr-2" />
-                            ゲームを開始する
+                            {isStarting ? "開始中..." : "ゲームを開始する"}
                         </Button>
                     ) : (
                         <div className="text-center">

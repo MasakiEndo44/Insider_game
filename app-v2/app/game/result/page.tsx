@@ -1,38 +1,25 @@
 "use client"
 
-import { Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { Trophy, Clock, RotateCcw, LogOut } from "lucide-react"
-
-type Player = {
-    id: string
-    name: string
-    role: "master" | "insider" | "common"
-}
-
-const DEMO_PLAYERS: Player[] = [
-    { id: "1", name: "たろう", role: "master" },
-    { id: "2", name: "はなこ", role: "common" },
-    { id: "3", name: "けんた", role: "insider" },
-    { id: "4", name: "さくら", role: "common" },
-    { id: "5", name: "ゆうき", role: "common" },
-    { id: "6", name: "あい", role: "common" },
-]
+import { useGame } from "@/context/game-context"
+import { useRoom } from "@/context/room-context"
 
 const ROLE_INFO = {
-    master: {
+    MASTER: {
         name: "マスター",
         icon: "/images/master-icon.png",
         color: "#3B82F6",
     },
-    insider: {
+    INSIDER: {
         name: "インサイダー",
         icon: "/images/insider-mark.png",
         color: "#E50012",
     },
-    common: {
+    CITIZEN: {
         name: "庶民",
         icon: "/images/common-icon.png",
         color: "#10B981",
@@ -41,19 +28,31 @@ const ROLE_INFO = {
 
 function ResultContent() {
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const roomId = searchParams.get("roomId") || "DEMO01"
-    const outcome = searchParams.get("outcome") || "common_win" // common_win | insider_win | timeout
+    const { outcome, topic, roles, setPhase, setRoles, setTopic, setOutcome, setTimer } = useGame()
+    const { roomId, players, resetRoom } = useRoom()
 
-    const isCommonWin = outcome === "common_win"
-    const isInsiderWin = outcome === "insider_win"
-    const isTimeout = outcome === "timeout"
+    const isCommonWin = outcome === "CITIZENS_WIN"
+    const isInsiderWin = outcome === "INSIDER_WIN"
+    // const isTimeout = outcome === "ALL_LOSE" // or timeout specific if added
+
+    useEffect(() => {
+        if (!roomId) {
+            router.push("/")
+        }
+    }, [roomId, router])
 
     const handleNextRound = () => {
-        router.push(`/lobby?roomId=${roomId}`)
+        // Reset game state
+        setPhase('LOBBY')
+        setRoles({})
+        setTopic("")
+        setOutcome(null)
+        setTimer(300)
+        router.push("/lobby")
     }
 
     const handleLeave = () => {
+        resetRoom()
         router.push("/")
     }
 
@@ -95,13 +94,20 @@ function ResultContent() {
                     </div>
                 </div>
 
+                {/* Topic Display */}
+                <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-xl p-6 text-center space-y-2">
+                    <p className="text-sm text-foreground-secondary">今回のお題</p>
+                    <p className="text-3xl font-black text-foreground">{topic}</p>
+                </div>
+
                 {/* Role Reveal */}
                 <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col" style={{ padding: '24px', gap: '12px' }}>
                     <h2 className="text-lg font-bold text-foreground">役職公開</h2>
 
                     <div className="space-y-3">
-                        {DEMO_PLAYERS.map((player) => {
-                            const roleInfo = ROLE_INFO[player.role]
+                        {players.map((player) => {
+                            const role = roles[player.id] || "CITIZEN"
+                            const roleInfo = ROLE_INFO[role]
                             return (
                                 <div
                                     key={player.id}
@@ -115,7 +121,7 @@ function ResultContent() {
                                     </div>
 
                                     <div className="flex-1">
-                                        <p className="font-bold text-foreground">{player.name}</p>
+                                        <p className="font-bold text-foreground">{player.nickname}</p>
                                         <p className="text-sm" style={{ color: roleInfo.color }}>
                                             {roleInfo.name}
                                         </p>
@@ -140,8 +146,8 @@ function ResultContent() {
             </div>
 
             {/* Fixed Bottom Actions */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t border-border space-y-3">
-                <div className="max-w-md mx-auto space-y-3">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t border-border space-y-3 flex justify-center">
+                <div className="max-w-md w-full space-y-3">
                     <Button
                         onClick={handleNextRound}
                         className="w-full h-14 text-lg font-bold bg-transparent hover:bg-game-red/10 text-foreground border-2 border-foreground rounded-xl transition-all duration-200 hover:border-game-red hover:text-game-red"
@@ -156,7 +162,7 @@ function ResultContent() {
                         className="w-full h-12 text-base text-foreground-secondary hover:text-foreground"
                     >
                         <LogOut className="w-4 h-4 mr-2" />
-                        ルームから退出
+                        ホームへ戻る
                     </Button>
                 </div>
             </div>

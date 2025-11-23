@@ -1,24 +1,37 @@
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { EyeOff, Clock } from "lucide-react"
+import { useGame } from "@/context/game-context"
+import { useRoom } from "@/context/room-context"
 
 function TopicContent() {
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const roomId = searchParams.get("roomId") || "DEMO01"
-    const role = (searchParams.get("role") || "common") as "master" | "insider" | "common"
+    const { roles, topic, setPhase, setTimer } = useGame()
+    const { playerId, players, roomId } = useRoom()
 
-    const [topic, setTopic] = useState("りんご")
+    const assignedRole = playerId && roles[playerId] ? roles[playerId] : null
+    const role = assignedRole?.toLowerCase() || "common" // Map to lowercase for existing logic if needed, or update logic
+
+    // const [topic, setTopic] = useState("りんご") // Now from context
     const [difficulty, setDifficulty] = useState("Easy")
     const [confirmed, setConfirmed] = useState(false)
     const [confirmedCount, setConfirmedCount] = useState(1)
     const [insiderTimer, setInsiderTimer] = useState(10)
     const [topicVisible, setTopicVisible] = useState(true)
-    const totalPlayers = 6
+
+    useEffect(() => {
+        if (!roomId || !playerId) {
+            router.push("/")
+            return
+        }
+        if (!assignedRole) {
+            router.push("/lobby")
+        }
+    }, [roomId, playerId, assignedRole, router])
 
     useEffect(() => {
         // インサイダーの場合、10秒後にお題を非表示
@@ -40,26 +53,37 @@ function TopicContent() {
 
     useEffect(() => {
         // 確認済みプレイヤー数をシミュレート
+        if (!roomId) return
         const interval = setInterval(() => {
             setConfirmedCount((prev) => {
-                if (prev < totalPlayers) return prev + 1
+                if (prev < players.length) return prev + 1
                 return prev
             })
         }, 2000)
 
         return () => clearInterval(interval)
-    }, [])
+    }, [roomId, players.length])
 
     const handleConfirm = () => {
         setConfirmed(true)
         // 全員確認済みになったら質問フェーズへ
+        setPhase('QUESTION')
+        setTimer(300) // 5 minutes default
         setTimeout(() => {
-            router.push(`/game/question?roomId=${roomId}&role=${role}&topic=${topic}`)
-        }, 1500)
+            router.push("/game/question")
+        }, 500)
+    }
+
+    if (!assignedRole) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-foreground">読み込み中...</div>
+            </div>
+        )
     }
 
     // 庶民の場合
-    if (role === "common") {
+    if (role === "citizen") {
         return (
             <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px' }}>
                 <div className="max-w-md w-full pb-24 flex flex-col gap-8 animate-fade-in">
@@ -91,7 +115,7 @@ function TopicContent() {
                     {/* Progress */}
                     <div className="bg-surface/30 backdrop-blur-sm border border-border rounded-lg p-4 text-center">
                         <p className="text-sm text-foreground-secondary">
-                            確認済み: <span className="text-game-red font-bold">{confirmedCount}</span> / {totalPlayers}
+                            確認済み: <span className="text-game-red font-bold">{confirmedCount}</span> / {players.length}
                         </p>
                     </div>
                 </div>
@@ -184,7 +208,7 @@ function TopicContent() {
                 {/* Progress */}
                 <div className="bg-surface/30 backdrop-blur-sm border-2 border-border rounded-lg p-4 text-center">
                     <p className="text-sm text-foreground/90">
-                        確認済み: <span className="text-game-red font-bold">{confirmedCount}</span> / {totalPlayers}
+                        確認済み: <span className="text-game-red font-bold">{confirmedCount}</span> / {players.length}
                     </p>
                 </div>
             </div>

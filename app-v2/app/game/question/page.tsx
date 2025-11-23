@@ -1,15 +1,18 @@
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { MessageSquare } from "lucide-react"
+import { QuestionChat, type Question } from "./_components/QuestionChat"
+import { useGame } from "@/context/game-context"
+import { useRoom } from "@/context/room-context"
 
 function TimerRing({ remaining, total, size = 200 }: { remaining: number; total: number; size?: number }) {
     const radius = 45
     const circumference = 2 * Math.PI * radius
-    const progress = remaining / total
+    const progress = Math.max(0, remaining / total)
     const offset = circumference * (1 - progress)
 
     const minutes = Math.floor(remaining / 60)
@@ -44,39 +47,70 @@ function TimerRing({ remaining, total, size = 200 }: { remaining: number; total:
 
 function QuestionPhaseContent() {
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const roomId = searchParams.get("roomId") || "DEMO01"
-    const role = (searchParams.get("role") || "common") as "master" | "insider" | "common"
-    const topic = searchParams.get("topic") || "りんご"
+    const { roles, topic, timer, setTimer, setPhase, setOutcome } = useGame()
+    const { playerId, roomId } = useRoom()
 
-    const [remaining, setRemaining] = useState(300) // 5分 = 300秒
-    const total = 300
+    const assignedRole = playerId && roles[playerId] ? roles[playerId] : null
+    const role = assignedRole?.toLowerCase() || "common"
     const isMaster = role === "master"
 
+    // Chat State (Local for now, could be moved to context or mock API)
+    const [questions, setQuestions] = useState<Question[]>([])
+
     useEffect(() => {
-        const timer = setInterval(() => {
-            setRemaining((prev) => {
-                if (prev <= 1) {
-                    clearInterval(timer)
-                    // 時間切れ → 全員敗北
-                    router.push(`/game/result?roomId=${roomId}&outcome=timeout`)
-                    return 0
-                }
-                return prev - 1
-            })
+        if (!roomId || !playerId) {
+            router.push("/")
+            return
+        }
+        if (!assignedRole) {
+            router.push("/lobby")
+        }
+    }, [roomId, playerId, assignedRole, router])
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setTimer(Math.max(0, timer - 1))
         }, 1000)
 
-        return () => clearInterval(timer)
-    }, [router, roomId])
+        if (timer <= 0) {
+            clearInterval(interval)
+            // Timeout -> All Lose (or specific rule)
+            setOutcome('ALL_LOSE') // Or timeout specific
+            setPhase('RESULT')
+            router.push("/game/result")
+        }
+
+        return () => clearInterval(interval)
+    }, [timer, setTimer, router, setOutcome, setPhase])
 
     const handleCorrectAnswer = () => {
         // 討論フェーズへ（残り時間を引き継ぐ）
-        router.push(`/game/debate?roomId=${roomId}&remaining=${remaining}`)
+        setPhase('DEBATE')
+        router.push("/game/debate")
     }
 
+    const handleAskQuestion = (text: string) => {
+        const newQuestion: Question = {
+            id: Math.random().toString(36).substr(2, 9),
+            text,
+            answer: 'pending',
+            timestamp: Date.now(),
+            playerName: role === 'insider' ? 'インサイダー' : '庶民'
+        }
+        setQuestions(prev => [...prev, newQuestion])
+    }
+
+    const handleAnswerQuestion = (id: string, answer: 'yes' | 'no') => {
+        setQuestions(prev => prev.map(q =>
+            q.id === id ? { ...q, answer } : q
+        ))
+    }
+
+    if (!assignedRole) return null
+
     return (
-        <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px' }}>
-            <div className="max-w-md w-full pb-24 flex flex-col gap-8 animate-fade-in">
+        <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px', paddingBottom: '128px' }}>
+            <div className="max-w-md w-full flex flex-col gap-8 animate-fade-in">
                 {/* Header */}
                 <div className="text-center space-y-2">
                     <div className="flex items-center justify-center gap-2">
@@ -88,7 +122,7 @@ function QuestionPhaseContent() {
 
                 {/* Timer */}
                 <div className="flex justify-center">
-                    <TimerRing remaining={remaining} total={total} />
+                    <TimerRing remaining={timer} total={300} />
                 </div>
 
                 {/* Topic Card (Master Only) */}
@@ -102,13 +136,21 @@ function QuestionPhaseContent() {
                     </div>
                 )}
 
+                {/* Chat Interface */}
+                <QuestionChat
+                    role={role as any}
+                    questions={questions}
+                    onAskQuestion={handleAskQuestion}
+                    onAnswerQuestion={handleAnswerQuestion}
+                />
+
                 {/* Instructions */}
                 <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-6 flex flex-col" style={{ padding: '24px', gap: '12px' }}>
                     <div className="flex items-center gap-2" style={{ gap: '8px' }}>
                         <MessageSquare className="w-5 h-5 text-game-red" />
                         <h3 className="font-bold text-foreground">進行方法</h3>
                     </div>
-                    <div className="text-sm text-foreground/90 leading-relaxed space-y-2">
+                    <div className="text-sm text-foreground/90 leading-relaxed flex flex-col" style={{ gap: '8px', lineHeight: '1.75' }}>
                         <p>• Discord/LINEで音声通話しながらプレイしてください</p>
                         <p>• 庶民はマスターに質問してお題を推測します</p>
                         <p>• マスターは「はい」「いいえ」で答えます</p>
@@ -119,8 +161,8 @@ function QuestionPhaseContent() {
 
             {/* Fixed Bottom Action (Master Only) */}
             {isMaster && (
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t border-border">
-                    <div className="max-w-md mx-auto">
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t border-border flex justify-center">
+                    <div className="max-w-md w-full">
                         <Button
                             onClick={handleCorrectAnswer}
                             className="w-full h-14 text-lg font-bold bg-transparent hover:bg-success/10 text-foreground border-2 border-foreground rounded-xl transition-all duration-200 hover:border-success hover:text-success"

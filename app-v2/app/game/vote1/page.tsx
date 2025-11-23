@@ -1,35 +1,87 @@
 "use client"
 
-import { useState, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ThumbsUp, ThumbsDown, Vote } from "lucide-react"
+import { useGame } from "@/context/game-context"
+import { useRoom } from "@/context/room-context"
+import { mockAPI } from "@/lib/mock-api"
 
 function Vote1Content() {
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const roomId = searchParams.get("roomId") || "DEMO01"
+    const { topic, setPhase, setOutcome } = useGame()
+    const { roomId, playerId, players } = useRoom()
 
     const [voted, setVoted] = useState(false)
     const [myVote, setMyVote] = useState<"yes" | "no" | null>(null)
-    const [votedCount, setVotedCount] = useState(1)
-    const totalPlayers = 6
-    const answerer = "たろう" // 実際はサーバーから取得
+    const [votedCount, setVotedCount] = useState(0)
 
-    const handleVote = (vote: "yes" | "no") => {
+    // Mock answerer for now (in real app, this comes from who answered correctly)
+    const answerer = players.length > 0 ? players[0].nickname : "正解者"
+
+    useEffect(() => {
+        if (!roomId || !playerId) {
+            router.push("/")
+            return
+        }
+    }, [roomId, playerId, router])
+
+    // Simulate other players voting
+    useEffect(() => {
+        if (!roomId) return
+        const interval = setInterval(() => {
+            setVotedCount((prev) => {
+                if (prev < players.length) return prev + 1
+                return prev
+            })
+        }, 1500)
+        return () => clearInterval(interval)
+    }, [roomId, players.length])
+
+    const handleVote = async (vote: "yes" | "no") => {
+        if (!roomId || !playerId) return
+
         setMyVote(vote)
         setVoted(true)
 
-        // デモ用: 全員投票したら第二投票へ
-        setTimeout(() => {
-            // yes過半数の場合は第二投票へ、no過半数なら結果画面へ
-            const yesWins = Math.random() > 0.5
-            if (yesWins) {
-                router.push(`/game/vote2?roomId=${roomId}`)
-            } else {
-                router.push(`/game/result?roomId=${roomId}&outcome=insider_win`)
-            }
-        }, 3000)
+        try {
+            await mockAPI.submitVote1(roomId, playerId, vote)
+
+            // Wait for others (mock) then proceed
+            setTimeout(() => {
+                // Mock result logic: 
+                // If majority YES -> Vote 2 (Decide who is insider among others? No, Vote 1 is "Is the answerer the insider?")
+                // If YES majority -> Answerer is suspected. If Answerer IS Insider -> Common Win. If Answerer is NOT Insider -> Insider Win (because common guessed wrong).
+                // Actually, the rules are:
+                // 1. Vote: Is the answerer the Insider?
+                // If Majority YES:
+                //    - If Answerer IS Insider: Commons WIN.
+                //    - If Answerer IS NOT Insider: Insider WINS (Commons lose).
+                // If Majority NO:
+                //    - Go to Vote 2 (Who is the Insider?)
+
+                // For mock, let's randomize or force a path.
+                // Let's say 50/50 chance to go to Vote 2.
+                const goToVote2 = Math.random() > 0.5
+
+                if (goToVote2) {
+                    setPhase('VOTE2')
+                    router.push("/game/vote2")
+                } else {
+                    // Result
+                    // Random outcome for mock
+                    const outcomes = ['CITIZENS_WIN', 'INSIDER_WIN'] as const
+                    const outcome = outcomes[Math.floor(Math.random() * outcomes.length)]
+                    setOutcome(outcome)
+                    setPhase('RESULT')
+                    router.push("/game/result")
+                }
+            }, 3000)
+        } catch (error) {
+            console.error("Vote failed:", error)
+            setVoted(false)
+        }
     }
 
     return (
@@ -104,7 +156,7 @@ function Vote1Content() {
                 {/* Progress */}
                 <div className="bg-surface/30 backdrop-blur-sm border border-border rounded-lg p-4 text-center">
                     <p className="text-sm text-foreground-secondary">
-                        投票済み: <span className="text-game-red font-bold">{votedCount}</span> / {totalPlayers}
+                        投票済み: <span className="text-game-red font-bold">{votedCount}</span> / {players.length}
                     </p>
                 </div>
             </div>

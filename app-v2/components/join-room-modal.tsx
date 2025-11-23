@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Lock, User } from "lucide-react"
+import { mockAPI } from "@/lib/mock-api"
+import { useRoom } from "@/context/room-context"
+import { useGame } from "@/context/game-context"
 
 interface JoinRoomModalProps {
     open: boolean
@@ -15,23 +18,35 @@ interface JoinRoomModalProps {
 
 export function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
     const router = useRouter()
-    const [passphrase, setPassphrase] = useState("")
+    const { setRoomId, setPassphrase, setPlayers, setPlayerId } = useRoom()
+    const { setPhase } = useGame()
+
+    const [passphraseInput, setPassphraseInput] = useState("")
     const [playerName, setPlayerName] = useState("")
     const [isLoading, setIsLoading] = useState(false)
 
     const handleJoin = async () => {
-        if (!passphrase.trim() || !playerName.trim()) return
+        if (!passphraseInput.trim() || !playerName.trim()) return
 
         setIsLoading(true)
 
-        // Mock: Find room by passphrase
-        const roomId = Math.random().toString(36).substring(2, 8).toUpperCase()
+        try {
+            const { roomId, player } = await mockAPI.joinRoom(passphraseInput, playerName)
 
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 500))
+            // Update Context
+            setRoomId(roomId)
+            setPassphrase(passphraseInput)
+            setPlayers([player]) // In real app, we would get full list
+            setPlayerId(player.id)
+            setPhase('LOBBY')
 
-        // Navigate to lobby
-        router.push(`/lobby?roomId=${roomId}&passphrase=${passphrase}&playerName=${playerName}&isHost=false`)
+            // Navigate to lobby
+            router.push('/lobby')
+        } catch (error) {
+            console.error("Failed to join room:", error)
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     return (
@@ -52,10 +67,10 @@ export function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-secondary" />
                             <Input
-                                id="passphrase"
+                                id="join-passphrase"
                                 placeholder="例: sakura2024"
-                                value={passphrase}
-                                onChange={(e) => setPassphrase(e.target.value)}
+                                value={passphraseInput}
+                                onChange={(e) => setPassphraseInput(e.target.value)}
                                 className="pl-11 h-12"
                                 style={{ paddingLeft: '44px' }}
                                 maxLength={20}
@@ -70,7 +85,7 @@ export function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                         <div className="relative">
                             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-secondary" />
                             <Input
-                                id="playerName"
+                                id="join-playerName"
                                 placeholder="例: たろう"
                                 value={playerName}
                                 onChange={(e) => setPlayerName(e.target.value)}
@@ -93,7 +108,7 @@ export function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                     </Button>
                     <Button
                         onClick={handleJoin}
-                        disabled={!passphrase.trim() || !playerName.trim() || isLoading}
+                        disabled={!passphraseInput.trim() || !playerName.trim() || isLoading}
                         className="flex-1 h-12 font-bold"
                     >
                         {isLoading ? "参加中..." : "参加する"}

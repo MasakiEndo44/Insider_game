@@ -1,11 +1,11 @@
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
-
-type Role = "master" | "insider" | "common"
+import { useGame, Role } from "@/context/game-context"
+import { useRoom } from "@/context/room-context"
 
 interface RoleInfo {
     type: Role
@@ -16,24 +16,24 @@ interface RoleInfo {
 }
 
 const ROLES: Record<Role, RoleInfo> = {
-    master: {
-        type: "master",
+    MASTER: {
+        type: "MASTER",
         name: "マスター",
         icon: "/images/master-icon.png",
         description:
             "あなたはマスターです。お題を知っています。質問に答えて、庶民がお題を当てられるように誘導してください。",
-        color: "#3B82F6", // Keep specific role colors or use CSS variables if defined
+        color: "#3B82F6",
     },
-    insider: {
-        type: "insider",
+    INSIDER: {
+        type: "INSIDER",
         name: "インサイダー",
         icon: "/images/insider-mark.png",
         description:
             "あなたはインサイダーです。お題を知っています。庶民のふりをして、バレないように正解へ誘導してください。",
         color: "#E50012",
     },
-    common: {
-        type: "common",
+    CITIZEN: {
+        type: "CITIZEN",
         name: "庶民",
         icon: "/images/common-icon.png",
         description: "あなたは庶民です。お題を知りません。マスターに質問して、お題を当てましょう。",
@@ -43,43 +43,51 @@ const ROLES: Record<Role, RoleInfo> = {
 
 function RoleAssignmentContent() {
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const roomId = searchParams.get("roomId") || "DEMO01"
+    const { roles, setPhase } = useGame()
+    const { playerId, players, roomId } = useRoom()
 
-    const [assignedRole, setAssignedRole] = useState<Role | null>(null)
     const [confirmed, setConfirmed] = useState(false)
+    // Mock confirmed count for now, or use real-time if available
     const [confirmedCount, setConfirmedCount] = useState(1)
-    const totalPlayers = 6
+
+    const assignedRole = playerId && roles[playerId] ? roles[playerId] : null
 
     useEffect(() => {
-        // デモ用: ランダムに役職を割り当て
-        const roles: Role[] = ["master", "insider", "common"]
-        const randomRole = roles[Math.floor(Math.random() * roles.length)]
-        setAssignedRole(randomRole)
+        if (!roomId || !playerId) {
+            router.push("/")
+            return
+        }
+        if (!assignedRole) {
+            // If no role assigned, maybe go back to lobby?
+            router.push("/lobby")
+        }
+    }, [roomId, playerId, assignedRole, router])
 
-        // 確認済みプレイヤー数をシミュレート
+    // Simulate other players confirming
+    useEffect(() => {
+        if (!roomId) return
         const interval = setInterval(() => {
             setConfirmedCount((prev) => {
-                if (prev < totalPlayers) return prev + 1
+                if (prev < players.length) return prev + 1
                 return prev
             })
         }, 2000)
-
         return () => clearInterval(interval)
-    }, [])
+    }, [roomId, players.length])
 
     const handleConfirm = () => {
         setConfirmed(true)
-        // 全員確認済みになったらお題確認画面へ
+        // Navigate to topic screen
+        setPhase('TOPIC')
         setTimeout(() => {
-            router.push(`/game/topic?roomId=${roomId}&role=${assignedRole}`)
-        }, 1500)
+            router.push("/game/topic")
+        }, 500)
     }
 
     if (!assignedRole) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="text-foreground">役職を配布中...</div>
+                <div className="text-foreground">読み込み中...</div>
             </div>
         )
     }
@@ -131,7 +139,7 @@ function RoleAssignmentContent() {
                 {/* Progress */}
                 <div className="bg-surface/30 backdrop-blur-sm border border-border rounded-lg p-4 text-center">
                     <p className="text-sm text-foreground-secondary">
-                        確認済み: <span className="text-game-red font-bold">{confirmedCount}</span> / {totalPlayers}
+                        確認済み: <span className="text-game-red font-bold">{confirmedCount}</span> / {players.length}
                     </p>
                 </div>
             </div>

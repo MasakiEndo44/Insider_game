@@ -1,13 +1,15 @@
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Users } from "lucide-react"
+import { useGame } from "@/context/game-context"
+import { useRoom } from "@/context/room-context"
 
 function TimerRing({ remaining, total, size = 200 }: { remaining: number; total: number; size?: number }) {
     const radius = 45
     const circumference = 2 * Math.PI * radius
-    const progress = remaining / total
+    const progress = Math.max(0, remaining / total)
     const offset = circumference * (1 - progress)
 
     const minutes = Math.floor(remaining / 60)
@@ -42,27 +44,41 @@ function TimerRing({ remaining, total, size = 200 }: { remaining: number; total:
 
 function DebatePhaseContent() {
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const roomId = searchParams.get("roomId") || "DEMO01"
-    const initialRemaining = Number.parseInt(searchParams.get("remaining") || "180")
+    const { timer, setTimer, setPhase } = useGame()
+    const { roomId } = useRoom()
 
-    const [remaining, setRemaining] = useState(initialRemaining)
+    // Initial remaining time comes from the previous phase via context
+    // But if we refresh, we rely on context state.
+    // We might want to store the "total debate time" somewhere if we want the ring to be accurate relative to total.
+    // For now, let's assume the timer carried over is the total or close to it, or just use a fixed total for the ring visual if needed.
+    // Actually, the debate phase usually has a fixed time or carries over.
+    // In the previous logic: `remaining` was passed from query params.
+    // Now `timer` is in context.
+
+    // If we want to visualize "Total" for the ring, we might need another state or just use the starting value of timer when component mounts.
+    const [initialTotal] = useState(timer > 0 ? timer : 180)
 
     useEffect(() => {
-        const timer = setInterval(() => {
-            setRemaining((prev) => {
-                if (prev <= 1) {
-                    clearInterval(timer)
-                    // 第一投票へ
-                    router.push(`/game/vote1?roomId=${roomId}`)
-                    return 0
-                }
-                return prev - 1
-            })
+        if (!roomId) {
+            router.push("/")
+            return
+        }
+    }, [roomId, router])
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setTimer(Math.max(0, timer - 1))
         }, 1000)
 
-        return () => clearInterval(timer)
-    }, [router, roomId])
+        if (timer <= 0) {
+            clearInterval(interval)
+            // 第一投票へ
+            setPhase('VOTE1')
+            router.push("/game/vote1")
+        }
+
+        return () => clearInterval(interval)
+    }, [timer, setTimer, router, setPhase])
 
     return (
         <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px' }}>
@@ -78,7 +94,7 @@ function DebatePhaseContent() {
 
                 {/* Timer */}
                 <div className="flex justify-center">
-                    <TimerRing remaining={remaining} total={initialRemaining} />
+                    <TimerRing remaining={timer} total={initialTotal} />
                 </div>
 
                 {/* Instructions */}

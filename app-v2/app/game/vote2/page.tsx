@@ -1,39 +1,65 @@
 "use client"
 
-import { useState, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter } from "next/navigation"
 import { Vote, Check } from "lucide-react"
+import { useGame } from "@/context/game-context"
+import { useRoom } from "@/context/room-context"
+import { mockAPI } from "@/lib/mock-api"
 
 function Vote2Content() {
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const roomId = searchParams.get("roomId") || "DEMO01"
+    const { topic, setPhase, setOutcome } = useGame()
+    const { roomId, playerId, players } = useRoom()
 
     const [voted, setVoted] = useState(false)
     const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null)
-    const [votedCount, setVotedCount] = useState(1)
-    const totalPlayers = 6
+    const [votedCount, setVotedCount] = useState(0)
 
-    // デモ用プレイヤーリスト（マスター除く）
-    const candidates = [
-        { id: "2", name: "はなこ" },
-        { id: "3", name: "けんた" },
-        { id: "4", name: "さくら" },
-        { id: "5", name: "ゆうき" },
-        { id: "6", name: "あい" },
-    ]
+    // Candidates are all other players
+    const candidates = players.filter(p => p.id !== playerId)
 
-    const handleVote = (playerId: string) => {
-        setSelectedPlayer(playerId)
+    useEffect(() => {
+        if (!roomId || !playerId) {
+            router.push("/")
+            return
+        }
+    }, [roomId, playerId, router])
+
+    // Simulate other players voting
+    useEffect(() => {
+        if (!roomId) return
+        const interval = setInterval(() => {
+            setVotedCount((prev) => {
+                if (prev < players.length) return prev + 1
+                return prev
+            })
+        }, 1500)
+        return () => clearInterval(interval)
+    }, [roomId, players.length])
+
+    const handleVote = async (targetPlayerId: string) => {
+        if (!roomId || !playerId) return
+
+        setSelectedPlayer(targetPlayerId)
         setVoted(true)
 
-        // デモ用: 全員投票したら結果画面へ
-        setTimeout(() => {
-            // ランダムで勝敗を決定
-            const outcomes = ["common_win", "insider_win"]
-            const outcome = outcomes[Math.floor(Math.random() * outcomes.length)]
-            router.push(`/game/result?roomId=${roomId}&outcome=${outcome}`)
-        }, 3000)
+        try {
+            await mockAPI.submitVote2(roomId, playerId, targetPlayerId)
+
+            // Wait for others (mock) then proceed
+            setTimeout(() => {
+                // Random result for mock
+                const outcomes = ["CITIZENS_WIN", "INSIDER_WIN"] as const
+                const outcome = outcomes[Math.floor(Math.random() * outcomes.length)]
+                setOutcome(outcome)
+                setPhase('RESULT')
+                router.push("/game/result")
+            }, 3000)
+        } catch (error) {
+            console.error("Vote failed:", error)
+            setVoted(false)
+        }
     }
 
     return (
@@ -65,10 +91,10 @@ function Vote2Content() {
                                 >
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-full bg-background/10 border-2 border-foreground/30 group-hover:border-game-red flex items-center justify-center font-bold text-foreground transition-all">
-                                            {candidate.name.charAt(0)}
+                                            {candidate.nickname.charAt(0)}
                                         </div>
                                         <span className="text-lg font-bold text-foreground group-hover:text-game-red transition-all">
-                                            {candidate.name}
+                                            {candidate.nickname}
                                         </span>
                                     </div>
                                 </button>
@@ -86,7 +112,7 @@ function Vote2Content() {
                             <div>
                                 <p className="text-lg font-bold text-foreground mb-1">投票しました</p>
                                 <p className="text-2xl font-black text-success">
-                                    {candidates.find((c) => c.id === selectedPlayer)?.name}
+                                    {candidates.find((c) => c.id === selectedPlayer)?.nickname}
                                 </p>
                             </div>
 
@@ -98,7 +124,7 @@ function Vote2Content() {
                 {/* Progress */}
                 <div className="bg-surface/30 backdrop-blur-sm border border-border rounded-lg p-4 text-center">
                     <p className="text-sm text-foreground-secondary">
-                        投票済み: <span className="text-game-red font-bold">{votedCount}</span> / {totalPlayers}
+                        投票済み: <span className="text-game-red font-bold">{votedCount}</span> / {players.length}
                     </p>
                 </div>
             </div>

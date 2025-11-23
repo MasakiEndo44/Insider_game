@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Lock, User } from "lucide-react"
+import { mockAPI } from "@/lib/mock-api"
+import { useRoom } from "@/context/room-context"
+import { useGame } from "@/context/game-context"
 
 interface CreateRoomModalProps {
     open: boolean
@@ -15,23 +18,36 @@ interface CreateRoomModalProps {
 
 export function CreateRoomModal({ open, onClose }: CreateRoomModalProps) {
     const router = useRouter()
-    const [passphrase, setPassphrase] = useState("")
+    const { setRoomId, setPassphrase, setPlayers, setHostId, setPlayerId } = useRoom()
+    const { setPhase } = useGame()
+
+    const [passphraseInput, setPassphraseInput] = useState("")
     const [playerName, setPlayerName] = useState("")
     const [isLoading, setIsLoading] = useState(false)
 
     const handleCreate = async () => {
-        if (!passphrase.trim() || !playerName.trim()) return
+        if (!passphraseInput.trim() || !playerName.trim()) return
 
         setIsLoading(true)
 
-        // Mock: Generate room ID and navigate to lobby
-        const roomId = Math.random().toString(36).substring(2, 8).toUpperCase()
+        try {
+            const { roomId, player } = await mockAPI.createRoom(passphraseInput, playerName)
 
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 500))
+            // Update Context
+            setRoomId(roomId)
+            setPassphrase(passphraseInput)
+            setPlayers([player])
+            setHostId(player.id)
+            setPlayerId(player.id)
+            setPhase('LOBBY')
 
-        // Navigate to lobby with room data
-        router.push(`/lobby?roomId=${roomId}&passphrase=${passphrase}&playerName=${playerName}&isHost=true`)
+            // Navigate to lobby (no params needed now)
+            router.push('/lobby')
+        } catch (error) {
+            console.error("Failed to create room:", error)
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     return (
@@ -54,8 +70,8 @@ export function CreateRoomModal({ open, onClose }: CreateRoomModalProps) {
                             <Input
                                 id="passphrase"
                                 placeholder="例: sakura2024"
-                                value={passphrase}
-                                onChange={(e) => setPassphrase(e.target.value)}
+                                value={passphraseInput}
+                                onChange={(e) => setPassphraseInput(e.target.value)}
                                 className="pl-11 h-12"
                                 style={{ paddingLeft: '44px' }}
                                 maxLength={20}
@@ -94,7 +110,7 @@ export function CreateRoomModal({ open, onClose }: CreateRoomModalProps) {
                     </Button>
                     <Button
                         onClick={handleCreate}
-                        disabled={!passphrase.trim() || !playerName.trim() || isLoading}
+                        disabled={!passphraseInput.trim() || !playerName.trim() || isLoading}
                         className="flex-1 h-12 font-bold"
                     >
                         {isLoading ? "作成中..." : "ルームを作る"}
