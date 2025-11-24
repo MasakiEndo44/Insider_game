@@ -2,32 +2,98 @@
 
 ```yaml
 - generic [active] [ref=e1]:
-  - generic [ref=e3]:
-    - generic [ref=e4]:
-      - generic [ref=e5]:
-        - img [ref=e6]
-        - heading "第一投票" [level=1] [ref=e9]
-      - paragraph [ref=e10]: 告発投票
-    - generic [ref=e11]:
-      - img [ref=e13]
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - img "Insider Logo" [ref=e7]
+          - generic [ref=e8]:
+            - heading "ロビー" [level=1] [ref=e9]
+            - paragraph [ref=e10]: プレイヤーを待っています...
+        - button [ref=e11]:
+          - img [ref=e12]
       - generic [ref=e15]:
-        - paragraph [ref=e16]: 投票しました
-        - paragraph [ref=e17]: はい
-      - paragraph [ref=e18]: 他のプレイヤーの投票を待っています...
-    - generic [ref=e20]:
-      - generic [ref=e21]: 投票済みプレイヤー
-      - generic [ref=e22]: 3 / 3
+        - heading "ルーム情報" [level=2] [ref=e16]
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - generic [ref=e19]:
+              - img [ref=e20]
+              - text: ルームID
+            - paragraph [ref=e24]: 04844682-ee04-43ee-8a0f-a62fe99e9c8b
+          - generic [ref=e25]:
+            - generic [ref=e26]:
+              - img [ref=e27]
+              - text: 合言葉
+            - generic [ref=e30]:
+              - paragraph [ref=e31]: testroom-17640042000
+              - button [ref=e32]:
+                - img
+        - generic [ref=e38]: 1/12
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - heading "参加プレイヤー (1/12)" [level=2] [ref=e41]:
+            - img [ref=e42]
+            - text: 参加プレイヤー
+            - generic [ref=e47]: (1/12)
+          - generic [ref=e48]: "準備完了: 1/1"
+        - generic [ref=e49]:
+          - generic [ref=e51]:
+            - generic [ref=e52]: H
+            - generic [ref=e53]:
+              - paragraph [ref=e54]: Host
+              - generic [ref=e56]:
+                - img [ref=e57]
+                - text: ホスト
+          - generic [ref=e61]: 空き
+          - generic [ref=e63]: 空き
+          - generic [ref=e65]: 空き
+          - generic [ref=e67]: 空き
+          - generic [ref=e69]: 空き
+          - generic [ref=e71]: 空き
+          - generic [ref=e73]: 空き
+          - generic [ref=e75]: 空き
+          - generic [ref=e77]: 空き
+          - generic [ref=e79]: 空き
+          - generic [ref=e81]: 空き
+        - paragraph [ref=e83]: ゲームを開始するには最低3人必要です
+      - generic [ref=e84]:
+        - generic [ref=e85]:
+          - img [ref=e86]
+          - heading "ゲーム設定" [level=2] [ref=e89]
+          - generic [ref=e90]: ホストのみ変更可能
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - generic [ref=e93]:
+              - img [ref=e94]
+              - text: 質問フェーズの制限時間
+            - combobox [ref=e97]:
+              - generic: 5分（推奨）
+              - img [ref=e98]
+          - generic [ref=e100]:
+            - generic [ref=e101]:
+              - img [ref=e102]
+              - text: お題のカテゴリ
+            - combobox [ref=e105]:
+              - img [ref=e106]
+        - paragraph [ref=e109]: 設定はゲーム開始前にいつでも変更できます。推奨設定は5分・一般カテゴリです。
+      - generic [ref=e110]:
+        - button "ゲームを開始する" [disabled]:
+          - img
+          - text: ゲームを開始する
+      - generic [ref=e112]:
+        - img [ref=e114]
+        - generic [ref=e117]:
+          - paragraph [ref=e118]: 友達を招待しよう
+          - paragraph [ref=e119]: 合言葉「testroom-17640042000」を共有してプレイヤーを招待できます
+        - button "コピー" [ref=e120]:
+          - img [ref=e121]
+          - text: コピー
+    - generic [ref=e125]:
+      - button "ゲームを開始する" [disabled]:
+        - img
+        - text: ゲームを開始する
   - region "Notifications alt+T"
-  - generic [ref=e29] [cursor=pointer]:
-    - button "Open Next.js Dev Tools" [ref=e30]:
-      - img [ref=e31]
-    - generic [ref=e34]:
-      - button "Open issues overlay" [ref=e35]:
-        - generic [ref=e36]:
-          - generic [ref=e37]: "0"
-          - generic [ref=e38]: "1"
-        - generic [ref=e39]: Issue
-      - button "Collapse issues badge" [ref=e40]:
-        - img [ref=e41]
-  - alert [ref=e43]: Insider Game
+  - button "Open Next.js Dev Tools" [ref=e131] [cursor=pointer]:
+    - img [ref=e132]
+  - alert [ref=e135]
 ```
