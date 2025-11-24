@@ -33,7 +33,7 @@ function Vote1Content() {
     useEffect(() => {
         if (!roomId) return;
 
-        // Initial fetch of vote count
+        // Initial fetch of vote count and my vote
         const fetchVoteCount = async () => {
             const { data: session } = await supabase
                 .from('game_sessions')
@@ -51,6 +51,22 @@ function Vote1Content() {
                     .eq('vote_type', 'VOTE1');
 
                 if (count !== null) setVotedCount(count);
+
+                // Check if I already voted
+                if (playerId) {
+                    const { data: myVoteData } = await supabase
+                        .from('votes')
+                        .select('vote_value')
+                        .eq('session_id', session.id)
+                        .eq('player_id', playerId)
+                        .eq('vote_type', 'VOTE1')
+                        .single();
+
+                    if (myVoteData) {
+                        setVoted(true);
+                        setMyVote(myVoteData.vote_value as "yes" | "no");
+                    }
+                }
             }
         };
         fetchVoteCount();
