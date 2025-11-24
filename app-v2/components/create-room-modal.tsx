@@ -10,6 +10,8 @@ import { Lock, User } from "lucide-react"
 import { api } from '@/lib/api';
 import { useRoom } from "@/context/room-context"
 import { useGame } from "@/context/game-context"
+import { toast } from 'sonner';
+import { APIError } from '@/lib/errors';
 
 interface CreateRoomModalProps {
     open: boolean
@@ -41,10 +43,20 @@ export function CreateRoomModal({ open, onClose }: CreateRoomModalProps) {
             setPlayerId(player.id)
             setPhase('LOBBY')
 
+            toast.success('ルームを作成しました')
+
             // Navigate to lobby (no params needed now)
             router.push('/lobby')
         } catch (error) {
             console.error("Failed to create room:", error)
+
+            if (error instanceof APIError) {
+                toast.error(error.message)
+                console.error(error.message)
+            } else {
+                toast.error('ルーム作成に失敗しました')
+                console.error('ルーム作成に失敗しました')
+            }
         } finally {
             setIsLoading(false)
         }

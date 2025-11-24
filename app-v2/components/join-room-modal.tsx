@@ -10,6 +10,8 @@ import { Lock, User } from "lucide-react"
 import { api } from '@/lib/api';
 import { useRoom } from "@/context/room-context"
 import { useGame } from "@/context/game-context"
+import { toast } from 'sonner';
+import { APIError } from '@/lib/errors';
 
 interface JoinRoomModalProps {
     open: boolean
@@ -40,10 +42,20 @@ export function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
             setPlayerId(player.id)
             setPhase('LOBBY')
 
+            toast.success('ルームに参加しました')
+
             // Navigate to lobby
             router.push('/lobby')
         } catch (error) {
             console.error("Failed to join room:", error)
+
+            if (error instanceof APIError) {
+                toast.error(error.message)
+                console.error(error.message)
+            } else {
+                toast.error('ルーム参加に失敗しました')
+                console.error('ルーム参加に失敗しました')
+            }
         } finally {
             setIsLoading(false)
         }

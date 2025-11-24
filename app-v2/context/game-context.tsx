@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { useRoom } from './room-context';
 
@@ -54,6 +55,7 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 export function GameProvider({ children }: { children: ReactNode }) {
     const [state, setState] = useState<GameState>(initialState);
     const { roomId, playerId } = useRoom();
+    const router = useRouter();
 
     const setPhase = (phase: GamePhase) => setState(prev => ({ ...prev, phase }));
     const setTimer = (time: number) => setState(prev => ({ ...prev, timer: time }));
@@ -63,6 +65,27 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const setRevealedPlayerId = (id: string | null) => setState(prev => ({ ...prev, revealedPlayerId: id }));
 
     const resetGame = () => setState(initialState);
+
+    // Auto-navigate when phase changes
+    useEffect(() => {
+        if (!state.phase || state.phase === 'LOBBY') return;
+
+        const phaseRoutes: Record<GamePhase, string> = {
+            'LOBBY': '/lobby',
+            'ROLE_ASSIGNMENT': '/game/role-assignment',
+            'TOPIC': '/game/topic',
+            'QUESTION': '/game/question',
+            'DEBATE': '/game/debate',
+            'VOTE1': '/game/vote1',
+            'VOTE2': '/game/vote2',
+            'RESULT': '/game/result'
+        };
+
+        const route = phaseRoutes[state.phase];
+        if (route) {
+            router.push(route);
+        }
+    }, [state.phase, router]);
 
     // Realtime Subscriptions
     useEffect(() => {
@@ -86,7 +109,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
                     }
                 }
             )
-            // 2. Listen for Game Session changes (Master / Answerer)
+            // 2. Listen for Game Session changes (Master / Answerer / Phase)
             .on(
                 'postgres_changes',
                 {
@@ -106,8 +129,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
                                 roles: { ...prev.roles, [session.answerer_id]: 'MASTER' }
                             }));
                         }
-                        // Also handle phase from session if needed? 
-                        // Currently rooms.phase drives the main flow.
+
+                        // Update Phase from session
+                        if (session.phase) {
+                            setState(prev => ({ ...prev, phase: session.phase as GamePhase }));
+                        }
                     }
                 }
             )
@@ -174,6 +200,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
         };
     }, [roomId, playerId]);
 
+    // Fetch initial phase
+    useEffect(() => {
+        if (!roomId) return;
+        const fetchPhase = async () => {
+            const { data: room } = await supabase
+                .from('rooms')
+                .select('phase')
+                .eq('id', roomId)
+                .single();
+
+            if (room) {
+                setPhase(room.phase as GamePhase);
+            }
+        };
+        fetchPhase();
+    }, [roomId]);
+
     // Fetch result when phase becomes RESULT
     useEffect(() => {
         if (state.phase === 'RESULT' && roomId) {
@@ -203,6 +246,42 @@ export function GameProvider({ children }: { children: ReactNode }) {
             fetchResult();
         }
     }, [state.phase, roomId]);
+
+    // Fetch role when phase is not LOBBY
+    useEffect(() => {
+        if (state.phase !== 'LOBBY' && roomId && playerId) {
+            const fetchRole = async () => {
+                const { data: roleData } = await supabase
+                    .from('roles')
+                    .select('*')
+                    .eq('player_id', playerId)
+                    .single(); // Assuming one role per player per session (but session ID is not here)
+                // We need to get the latest role.
+                // But roles table has session_id.
+                // We should order by created_at desc.
+
+                if (roleData) {
+                    setRoles({ [playerId]: roleData.role as Role });
+                } else {
+                    // Try to find latest role for this player in this room's sessions
+                    // But we don't have session ID easily.
+                    // Let's assume the latest role inserted for this player is the correct one.
+                    const { data: latestRole } = await supabase
+                        .from('roles')
+                        .select('*')
+                        .eq('player_id', playerId)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single();
+
+                    if (latestRole) {
+                        setRoles({ [playerId]: latestRole.role as Role });
+                    }
+                }
+            };
+            fetchRole();
+        }
+    }, [state.phase, roomId, playerId]);
 
     return (
         <GameContext.Provider

@@ -1,0 +1,106 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - img "Insider Logo" [ref=e6]
+      - heading "インサイダー" [level=1] [ref=e7]
+      - paragraph [ref=e8]: オンライン推理ゲーム
+    - generic [ref=e9]:
+      - paragraph [ref=e10]: マスター、インサイダー、庶民の3つの役職に分かれて遊ぶ推理ゲーム。
+      - paragraph [ref=e11]: お題を当てた後、誰がインサイダーかを見つけ出そう。
+    - generic [ref=e12]:
+      - button "PLAY" [ref=e13]:
+        - img [ref=e14]
+        - text: PLAY
+      - button "ルームに参加する" [ref=e16]:
+        - img [ref=e17]
+        - text: ルームに参加する
+    - paragraph [ref=e23]: 3〜12人で遊べます
+  - region "Notifications alt+T"
+  - generic [active]:
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - generic [ref=e28]:
+          - navigation [ref=e29]:
+            - button "previous" [disabled] [ref=e30]:
+              - img "previous" [ref=e31]
+            - generic [ref=e33]:
+              - generic [ref=e34]: 1/
+              - text: "1"
+            - button "next" [disabled] [ref=e35]:
+              - img "next" [ref=e36]
+          - img
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - img [ref=e40]
+            - generic "Latest available version is detected (16.0.3)." [ref=e42]: Next.js 16.0.3
+            - generic [ref=e43]: Turbopack
+          - img
+      - dialog "Build Error" [ref=e45]:
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - generic [ref=e50]:
+              - generic [ref=e52]: Build Error
+              - generic [ref=e53]:
+                - button "Copy Error Info" [ref=e54] [cursor=pointer]:
+                  - img [ref=e55]
+                - link "Go to related documentation" [ref=e57] [cursor=pointer]:
+                  - /url: https://nextjs.org/docs/app/api-reference/directives/use-client
+                  - img [ref=e58]
+                - link "Learn more about enabling Node.js inspector for server code with Chrome DevTools" [ref=e60] [cursor=pointer]:
+                  - /url: https://nextjs.org/docs/app/building-your-application/configuring/debugging#server-side-code
+                  - img [ref=e61]
+            - generic [ref=e70]: Ecmascript file had an error
+          - generic [ref=e72]:
+            - generic [ref=e74]:
+              - img [ref=e76]
+              - generic [ref=e79]: ./app/game/vote1/page.tsx (1:20)
+              - button "Open in editor" [ref=e80] [cursor=pointer]:
+                - img [ref=e82]
+            - generic [ref=e85]:
+              - generic [ref=e86]: Ecmascript file had an error
+              - text: ">"
+              - generic [ref=e87]: 1 |
+              - text: import
+              - generic [ref=e88]: "{ useState"
+              - text: ","
+              - generic [ref=e89]: useEffect
+              - text: ", Suspense"
+              - generic [ref=e90]: "}"
+              - text: from "react"
+              - generic [ref=e91]: "|"
+              - text: ^^^^^^^^^
+              - generic [ref=e92]: 2 |
+              - text: import
+              - generic [ref=e93]: "{ useRouter }"
+              - text: from "next/navigation"
+              - generic [ref=e94]: 3 |
+              - text: import
+              - generic [ref=e95]: "{"
+              - text: Button
+              - generic [ref=e96]: "}"
+              - text: from "@/components/ui/button"
+              - generic [ref=e97]: 4 |
+              - text: import
+              - generic [ref=e98]: "{"
+              - text: ThumbsUp, ThumbsDown, Vote
+              - generic [ref=e99]: "}"
+              - text: from "lucide-react"
+              - generic [ref=e100]:
+                - text: "You're importing a component that needs `useEffect`. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the `\"use client\"` directive. Learn more:"
+                - link "https://nextjs.org/docs/app/api-reference/directives/use-client" [ref=e101] [cursor=pointer]:
+                  - /url: https://nextjs.org/docs/app/api-reference/directives/use-client
+        - generic [ref=e102]: "1"
+        - generic [ref=e103]: "2"
+    - generic [ref=e108] [cursor=pointer]:
+      - button "Open Next.js Dev Tools" [ref=e109]:
+        - img [ref=e110]
+      - button "Open issues overlay" [ref=e114]:
+        - generic [ref=e115]:
+          - generic [ref=e116]: "0"
+          - generic [ref=e117]: "1"
+        - generic [ref=e118]: Issue
+  - alert [ref=e119]
+```

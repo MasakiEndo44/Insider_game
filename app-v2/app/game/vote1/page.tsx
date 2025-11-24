@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect, Suspense } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -8,6 +6,7 @@ import { useGame } from "@/context/game-context"
 import { useRoom } from "@/context/room-context"
 import { api } from '@/lib/api';
 import { supabase } from "@/lib/supabase/client"
+import { ProgressIndicator } from "@/components/progress-indicator"
 
 function Vote1Content() {
     const router = useRouter()
@@ -28,7 +27,7 @@ function Vote1Content() {
         }
     }, [roomId, playerId, router])
 
-    // Subscribe to votes to count them (Host only needs this really, but good for UI)
+    // Subscribe to votes to count them for UI display
     useEffect(() => {
         if (!roomId) return;
 
@@ -72,110 +71,8 @@ function Vote1Content() {
         return () => { supabase.removeChannel(channel) }
     }, [roomId]);
 
-    // Host Logic: Check votes and trigger next phase
-    useEffect(() => {
-        const checkVotes = async () => {
-            console.log('Checking votes...', { roomId, playerId, playersLength: players.length });
-            if (!roomId || !playerId) return;
-
-            // Check if I am host
-            const { data: player } = await supabase
-                .from('players')
-                .select('is_host')
-                .eq('id', playerId)
-                .single();
-
-            console.log('Is host check:', player);
-            if (!player?.is_host) return;
-
-            // Get Session
-            const { data: session } = await supabase
-                .from('game_sessions')
-                .select('id')
-                .eq('room_id', roomId)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
-
-            if (!session) return;
-
-            // Get Player Count from DB to be safe
-            const { count: playerCount } = await supabase
-                .from('players')
-                .select('*', { count: 'exact', head: true })
-                .eq('room_id', roomId);
-
-            if (!playerCount) return;
-
-            const { count: voteCount } = await supabase
-                .from('votes')
-                .select('*', { count: 'exact', head: true })
-                .eq('session_id', session.id)
-                .eq('vote_type', 'VOTE1');
-
-            if (voteCount === playerCount) {
-                // All voted. Calculate result.
-                // Fetch votes
-                const { data: votes } = await supabase
-                    .from('votes')
-                    .select('vote_value')
-                    .eq('session_id', session.id)
-                    .eq('vote_type', 'VOTE1');
-
-                if (!votes) return;
-
-                const yesVotes = votes.filter((v: any) => v.vote_value === 'yes').length;
-                const noVotes = votes.filter((v: any) => v.vote_value === 'no').length;
-
-                if (yesVotes > noVotes) {
-                    // Majority YES: Suspect Answerer
-                    // Check if Answerer is Insider
-                    const { data: roles } = await supabase
-                        .from('roles')
-                        .select('role, player_id')
-                        .eq('session_id', session.id);
-
-                    // We need to know who is answerer.
-                    // session.answerer_id is needed.
-                    // We need to fetch session with answerer_id.
-                    const { data: sessionFull } = await supabase
-                        .from('game_sessions')
-                        .select('answerer_id')
-                        .eq('id', session.id)
-                        .single();
-
-                    const answererId = sessionFull?.answerer_id;
-                    const answererRole = roles?.find((r: any) => r.player_id === answererId)?.role;
-                    const insiderRole = roles?.find((r: any) => r.role === 'INSIDER');
-
-                    let outcome = 'ALL_LOSE';
-                    if (answererRole === 'INSIDER') {
-                        outcome = 'CITIZENS_WIN'; // Commons win
-                    } else {
-                        outcome = 'INSIDER_WIN'; // Insider wins
-                    }
-
-                    // Insert Result
-                    await supabase.from('results').insert({
-                        session_id: session.id,
-                        outcome,
-                        revealed_player_id: insiderRole?.player_id
-                    });
-
-                    // Update Phase
-                    await api.updatePhase(roomId!, 'RESULT');
-
-                } else {
-                    // Majority NO: Go to Vote 2
-                    await api.updatePhase(roomId!, 'VOTE2');
-                }
-            }
-        };
-
-        // Poll every few seconds if Host
-        const interval = setInterval(checkVotes, 3000);
-        return () => clearInterval(interval);
-    }, [roomId, players.length])
+    // Phase transitions are now handled by Database Trigger
+    // No client-side polling needed!
 
     const handleVote = async (vote: "yes" | "no") => {
         if (!roomId || !playerId) return
@@ -260,12 +157,14 @@ function Vote1Content() {
                     </>
                 )}
 
+
                 {/* Progress */}
-                <div className="bg-surface/30 backdrop-blur-sm border border-border rounded-lg p-4 text-center">
-                    <p className="text-sm text-foreground-secondary">
-                        投票済み: <span className="text-game-red font-bold">{votedCount}</span> / {players.length}
-                    </p>
-                </div>
+                <ProgressIndicator
+                    current={votedCount}
+                    total={players.length}
+                    label="投票済みプレイヤー"
+                    className="bg-surface/30 backdrop-blur-sm border border-border rounded-lg p-4"
+                />
             </div>
         </div>
     )
