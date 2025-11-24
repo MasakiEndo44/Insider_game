@@ -1,13 +1,90 @@
 "use client"
 
-import { Suspense, useEffect } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { Trophy, Clock, RotateCcw, LogOut } from "lucide-react"
 import { useGame } from "@/context/game-context"
 import { useRoom } from "@/context/room-context"
+import { supabase } from "@/lib/supabase/client"
 import { api } from '@/lib/api';
+
+function VoteBreakdown({ roomId, players }: { roomId: string | null, players: any[] }) {
+    const [votes, setVotes] = useState<any[]>([])
+
+    useEffect(() => {
+        if (!roomId) return;
+        const fetchVotes = async () => {
+            const { data: session } = await supabase
+                .from('game_sessions')
+                .select('id')
+                .eq('room_id', roomId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (session) {
+                const { data } = await supabase
+                    .from('votes')
+                    .select('*')
+                    .eq('session_id', session.id);
+                if (data) setVotes(data);
+            }
+        }
+        fetchVotes();
+    }, [roomId]);
+
+    if (votes.length === 0) return null;
+
+    // Group votes by type
+    const vote1 = votes.filter(v => v.vote_type === 'VOTE1');
+    const vote2 = votes.filter(v => v.vote_type === 'VOTE2');
+
+    return (
+        <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col gap-4">
+            <h2 className="text-lg font-bold text-foreground">投票結果</h2>
+
+            {vote1.length > 0 && (
+                <div>
+                    <h3 className="text-sm font-bold text-foreground-secondary mb-2">第一投票 (正解者への告発)</h3>
+                    <div className="space-y-2">
+                        {vote1.map(v => {
+                            const voter = players.find(p => p.id === v.player_id)?.nickname || '不明';
+                            return (
+                                <div key={v.id} className="flex justify-between text-sm">
+                                    <span className="text-foreground">{voter}</span>
+                                    <span className={v.vote_value === 'yes' ? 'text-game-red font-bold' : 'text-success font-bold'}>
+                                        {v.vote_value === 'yes' ? '黒 (インサイダーだと思う)' : '白 (インサイダーではない)'}
+                                    </span>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {vote2.length > 0 && (
+                <div>
+                    <h3 className="text-sm font-bold text-foreground-secondary mb-2 mt-4">第二投票 (誰がインサイダーか)</h3>
+                    <div className="space-y-2">
+                        {vote2.map(v => {
+                            const voter = players.find(p => p.id === v.player_id)?.nickname || '不明';
+                            const target = players.find(p => p.id === v.vote_value)?.nickname || '不明';
+                            return (
+                                <div key={v.id} className="flex justify-between text-sm">
+                                    <span className="text-foreground">{voter}</span>
+                                    <span className="text-foreground-secondary">→</span>
+                                    <span className="text-game-red font-bold">{target}</span>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
 
 const ROLE_INFO = {
     MASTER: {
@@ -150,17 +227,8 @@ function ResultContent() {
                     </div>
                 </div>
 
-                {/* Game Stats */}
-                <div className="bg-surface/30 backdrop-blur-sm border border-border rounded-xl p-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                        <span className="text-foreground-secondary">ゲーム時間</span>
-                        <span className="text-foreground font-bold">3分42秒</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                        <span className="text-foreground-secondary">質問回数</span>
-                        <span className="text-foreground font-bold">12回</span>
-                    </div>
-                </div>
+                {/* Vote Breakdown */}
+                <VoteBreakdown roomId={roomId} players={players} />
             </div>
 
             {/* Fixed Bottom Actions */}

@@ -251,22 +251,34 @@ export function GameProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (state.phase !== 'LOBBY' && roomId && playerId) {
             const fetchRole = async () => {
-                const { data: roleData } = await supabase
-                    .from('roles')
-                    .select('*')
-                    .eq('player_id', playerId)
-                    .single(); // Assuming one role per player per session (but session ID is not here)
-                // We need to get the latest role.
-                // But roles table has session_id.
-                // We should order by created_at desc.
+                if (state.phase === 'RESULT') {
+                    // Fetch ALL roles for the session
+                    // We need to find the session ID first
+                    const { data: session } = await supabase
+                        .from('game_sessions')
+                        .select('id')
+                        .eq('room_id', roomId)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single();
 
-                if (roleData) {
-                    setRoles({ [playerId]: roleData.role as Role });
+                    if (session) {
+                        const { data: allRoles } = await supabase
+                            .from('roles')
+                            .select('*')
+                            .eq('session_id', session.id);
+
+                        if (allRoles) {
+                            const rolesMap: Record<string, Role> = {};
+                            allRoles.forEach(r => {
+                                rolesMap[r.player_id] = r.role as Role;
+                            });
+                            setRoles(rolesMap);
+                        }
+                    }
                 } else {
-                    // Try to find latest role for this player in this room's sessions
-                    // But we don't have session ID easily.
-                    // Let's assume the latest role inserted for this player is the correct one.
-                    const { data: latestRole } = await supabase
+                    // Fetch only my role
+                    const { data: roleData } = await supabase
                         .from('roles')
                         .select('*')
                         .eq('player_id', playerId)
@@ -274,8 +286,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
                         .limit(1)
                         .single();
 
-                    if (latestRole) {
-                        setRoles({ [playerId]: latestRole.role as Role });
+                    if (roleData) {
+                        setRoles({ [playerId]: roleData.role as Role });
                     }
                 }
             };
