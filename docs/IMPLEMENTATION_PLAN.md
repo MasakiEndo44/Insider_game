@@ -723,363 +723,95 @@ export async function POST(request: Request) {
 
 ---
 
-## Phase 6: Supabase Edge Functions (Week 8)
+## Phase 6: 最終調整と最適化 (Week 11)
 
 ### 目標
-- Edge Functions実装
-- ゲームロジック実装
-- 集計処理実装
+- Supabaseエラー解消 (Realtime, RLS)
+- UI/UXの最終ブラッシュアップ
+- E2Eテストの安定化
+- 本番運用準備
+
+### 現状認識
+- **Vercelデプロイ**: 完了済み
+- **Supabase**: 基本構築完了、Realtime設定漏れあり
+- **課題**: E2Eテスト不安定、RLSポリシーが緩い、タイマー同期がクライアント依存
 
 ### タスク
 
-#### 6.1 役職割り当て
+#### 6.1 Supabase修正 (緊急)
 
-**ファイル構造**:
-```
-supabase/functions/
-  assign-roles/
-    index.ts
-```
+**内容**:
+- Realtime Publicationの設定漏れを修正
+- RLSポリシーを厳格化 (セキュリティ強化)
 
-**実装内容**:
-```typescript
-// supabase/functions/assign-roles/index.ts
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+**タスク**:
+1. **Realtime Publication適用**
+   - マイグレーション: `supabase/migrations/20251125_enable_realtime.sql`
+   - 実行コマンド: `supabase db push` またはDashboardで実行
+   - 確認: テーブル変更がクライアントに即座に通知されること
 
-serve(async (req) => {
-  const { session_id, room_id } = await req.json();
-  
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  );
-  
-  // プレイヤー取得
-  const { data: players } = await supabase
-    .from('players')
-    .select('*')
-    .eq('room_id', room_id);
-  
-  // 前回マスターID取得 (TODO)
-  
-  // ランダム割り当て
-  const shuffled = [...players].sort(() => Math.random() - 0.5);
-  const master = shuffled[0];
-  const insider = shuffled[1];
-  const citizens = shuffled.slice(2);
-  
-  // DB保存
-  const roles = [
-    { session_id, player_id: master.id, role: 'MASTER' },
-    { session_id, player_id: insider.id, role: 'INSIDER' },
-    ...citizens.map(c => ({ session_id, player_id: c.id, role: 'CITIZEN' }))
-  ];
-  
-  await supabase.from('roles').insert(roles);
-  
-  return new Response(JSON.stringify({ success: true }), {
-    headers: { 'Content-Type': 'application/json' }
-  });
-});
-```
+2. **RLSポリシー厳格化**
+   - 現状: `public_read_*` (全公開)
+   - 修正方針:
+     - `rooms`: 参加者のみ参照可
+     - `players`: 同じルームのプレイヤーのみ参照可
+     - `game_sessions`: 同じルームのセッションのみ参照可
+     - `votes`: 集計前は自分の投票のみ、集計後は全員 (または集計結果のみ)
 
-**成果物**:
-- [x] assign-roles Edge Function
+#### 6.2 UI/UX 最終調整
 
-#### 6.2 お題選択
+**内容**:
+- ユーザーフィードバックに基づく改善
+- エラーハンドリングの強化
+- タイマー同期の改善
 
-**ファイル構造**:
-```
-supabase/functions/
-  select-topic/
-    index.ts
-```
+**タスク**:
+1. **エラーハンドリング**
+   - APIエラー時のToast通知実装
+   - ネットワーク切断時の再接続表示
+   - `ErrorBoundary` の設置
 
-**実装内容**:
-```typescript
-serve(async (req) => {
-  const { session_id, category } = await req.json();
-  
-  const supabase = createClient(...);
-  
-  // カテゴリフィルタ
-  const { data: allTopics } = await supabase
-    .from('master_topics')
-    .select('*')
-    .eq('category', category);
-  
-  // ランダム選択
-  const selected = allTopics[Math.floor(Math.random() * allTopics.length)];
-  
-  // DB保存
-  await supabase.from('topics').insert({
-    session_id,
-    topic_text: selected.topic_text,
-    category
-  });
-  
-  return new Response(JSON.stringify({ topic: selected.topic_text }), {
-    headers: { 'Content-Type': 'application/json' }
-  });
-});
-```
+2. **タイマー同期改善**
+   - 現状: クライアントサイドでカウントダウン
+   - 改善: `deadline_epoch` (DB) と `server_time` (Edge Function/DB) を用いた補正
+   - サーバー時刻とのズレを考慮した残り時間表示
 
-**成果物**:
-- [x] select-topic Edge Function
+3. **UIブラッシュアップ**
+   - モバイル表示の崩れ確認・修正
+   - アニメーションの微調整
+   - フォントサイズ・配色の統一感確認
 
-#### 6.3 投票集計
+#### 6.3 テスト安定化
 
-**ファイル構造**:
-```
-supabase/functions/
-  tally-votes/
-    index.ts
-```
+**内容**:
+- FlakyなE2Eテストの修正
+- 手動テストによる最終確認
 
-**実装内容**:
-```typescript
-serve(async (req) => {
-  const { session_id, vote_type } = await req.json();
-  
-  const supabase = createClient(...);
-  
-  // 投票取得
-  const { data: votes } = await supabase
-    .from('votes')
-    .select('*')
-    .eq('session_id', session_id)
-    .eq('vote_type', vote_type);
-  
-  if (vote_type === 'VOTE1') {
-    const yesCount = votes.filter(v => v.vote_value === 'yes').length;
-    const total = votes.length;
-    
-    if (yesCount > total / 2) {
-      // Yes過半数 → 正解者の役職公開
-      // 勝敗判定
-      // ...
-    } else {
-      // No過半数 → 第二投票へ
-      await supabase
-        .from('game_sessions')
-        .update({ phase: 'VOTE2' })
-        .eq('id', session_id);
-    }
-  } else if (vote_type === 'VOTE2') {
-    // 集計ロジック
-    // 同票判定
-    // 決選投票 or 結果
-  }
-  
-  return new Response(JSON.stringify({ success: true }), {
-    headers: { 'Content-Type': 'application/json' }
-  });
-});
-```
+**タスク**:
+1. **E2Eテスト修正**
+   - `room-flow.spec.ts`: タイムアウト延長、待機ロジック改善
+   - `chat.spec.ts`: Realtime反映待ちのロジック追加
+   - 目標: 全テストが安定してPASSすること
 
-**成果物**:
-- [x] tally-votes Edge Function
+2. **手動テスト (3人以上)**
+   - 実際のデバイス(PC/スマホ混在)でのプレイ
+   - 異常系(途中切断、再接続)の動作確認
 
 ---
 
-## Phase 7: Realtime統合 (Week 9)
+## マイルストーン (改訂版)
 
-### 目標
-- Supabase Realtime統合
-- リアルタイム同期実装
-- UI状態自動更新
-
-### タスク
-
-#### 7.1 Realtime購読
-
-**実装内容**:
-```typescript
-// hooks/use-realtime.ts
-export function useRealtime(roomId: string) {
-  const [players, setPlayers] = useState([]);
-  
-  useEffect(() => {
-    const channel = supabase.channel(`room:${roomId}`);
-    
-    // プレイヤー変更購読
-    channel
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setPlayers(prev => [...prev, payload.new]);
-          } else if (payload.eventType === 'DELETE') {
-            setPlayers(prev => prev.filter(p => p.id !== payload.old.id));
-          }
-        }
-      )
-      .subscribe();
-    
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [roomId]);
-  
-  return { players };
-}
-```
-
-**成果物**:
-- [x] useRealtime hook
-- [x] プレイヤーリスト同期
-- [x] フェーズ変更同期
-
-#### 7.2 ブロードキャストイベント
-
-**実装内容**:
-```typescript
-// ゲーム開始をブロードキャスト
-await supabase
-  .from('rooms')
-  .update({ phase: 'DEAL' })
-  .eq('id', roomId);
-
-// Realtimeで自動配信される
-```
-
-**成果物**:
-- [x] イベントブロードキャスト実装
-
----
-
-## Phase 8: テスト・デバッグ (Week 10)
-
-### 目標
-- E2Eテスト実装
-- バグ修正
-- パフォーマンス最適化
-
-### タスク
-
-#### 8.1 Playwrightセットアップ
-
-```bash
-npm init playwright@latest
-```
-
-**テストシナリオ**:
-```typescript
-// e2e/game-flow.spec.ts
-test('ゲーム全体フロー', async ({ page, context }) => {
-  // ホストブラウザ
-  await page.goto('/');
-  await page.click('text=PLAY');
-  await page.fill('input[name="passphrase"]', 'test123');
-  await page.fill('input[name="nickname"]', 'Host');
-  await page.click('text=作成');
-  
-  // プレイヤーブラウザ
-  const page2 = await context.newPage();
-  await page2.goto('/');
-  await page2.click('text=ルームに参加する');
-  await page2.fill('input[name="passphrase"]', 'test123');
-  await page2.fill('input[name="nickname"]', 'Player1');
-  await page2.click('text=参加');
-  
-  // ...ゲーム進行
-});
-```
-
-**成果物**:
-- [x] E2Eテスト (5シナリオ)
-
-#### 8.2 負荷テスト
-
-**Artillery設定**:
-```yaml
-# load-test.yml
-config:
-  target: 'http://localhost:3000'
-  phases:
-    - duration: 60
-      arrivalRate: 5
-scenarios:
-  - flow:
-      - post:
-          url: '/api/rooms'
-          json:
-            passphrase: 'test{{ $randomString() }}'
-            nickname: 'Player{{ $randomNumber(1, 100) }}'
-```
-
-**成果物**:
-- [x] 負荷テスト (30同時接続)
-
----
-
-## Phase 9: デプロイ (Week 11)
-
-### 目標
-- Vercelデプロイ
-- 本番環境動作確認
-- ドキュメント整備
-
-### タスク
-
-#### 9.1 Vercelデプロイ
-
-**手順**:
-1. GitHubリポジトリ作成
-2. Vercelプロジェクト接続
-3. 環境変数設定
-4. 自動デプロイ設定
-
-**環境変数**:
-```
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY
-```
-
-**成果物**:
-- [x] 本番環境デプロイ
-
-#### 9.2 ドキュメント整備
-
-**ファイル作成**:
-- [x] README.md (日本語・英語)
-- [x] CONTRIBUTING.md
-- [x] CHANGELOG.md
-
----
-
-## マイルストーン
-
-| Week | Phase | 成果物 | 完了基準 |
-|------|-------|--------|---------|
-| 1 | セットアップ | プロジェクト骨格、デザインシステム | `npm run dev` 起動可能 |
-| 2-3 | 静的UI | 全画面UI | 全画面表示確認、モックデータ動作 |
-| 4 | 状態管理 | Context API、モックAPI | フロー完全動作 (モック) |
-| 5 | DB | Supabaseスキーマ、RLS | データ保存・取得可能 |
-| 6-7 | API | Next.js API Routes | CRUD操作可能 |
-| 8 | Edge Functions | ゲームロジック | 役職割り当て、集計動作 |
-| 9 | Realtime | リアルタイム同期 | 複数ブラウザで同期確認 |
-| 10 | テスト | E2E、負荷テスト | 全テスト成功 |
-| 11 | デプロイ | 本番環境 | URL公開、動作確認 |
-
----
-
-## リスク管理
-
-| リスク | 影響度 | 対策 |
-|-------|-------|------|
-| Realtime遅延 | 高 | 事前検証、Socket.io代替案 |
-| RLS設計ミス | 高 | E2Eテスト、セキュリティレビュー |
-| タイマー同期ズレ | 中 | epoch差分計算、サーバー依存減 |
-| Supabase制限超過 | 中 | 使用量監視、Pro plan移行準備 |
+| Phase | 内容 | 状態 |
+|-------|------|------|
+| 1-4 | セットアップ〜DB構築 | ✅ 完了 |
+| 5 | API & 基本機能実装 | ✅ 完了 |
+| 6 | **最終調整 & 最適化** | 🔄 **今回実施** |
+| - | Vercelデプロイ | ✅ 完了 |
 
 ---
 
 ## 次のステップ
 
-1. **Phase 1開始**: プロジェクトセットアップ
-2. **プロトタイプコピー**: `online-board-game/` から必要ファイルをコピー
-3. **週次レビュー**: 毎週金曜日に進捗確認
+1. **Phase 6開始**: `20251125_enable_realtime.sql` の適用から着手
+2. **E2Eテスト再実行**: Realtime修正後の安定性確認
+3. **UI調整**: 残りのUI課題を消化

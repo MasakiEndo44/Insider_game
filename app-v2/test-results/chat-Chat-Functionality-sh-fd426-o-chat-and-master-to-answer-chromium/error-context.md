@@ -1,0 +1,114 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - img "Insider Logo" [ref=e7]
+          - generic [ref=e8]:
+            - heading "ロビー" [level=1] [ref=e9]
+            - paragraph [ref=e10]: プレイヤーを待っています...
+        - button [ref=e11]:
+          - img [ref=e12]
+      - generic [ref=e15]:
+        - heading "ルーム情報" [level=2] [ref=e16]
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - generic [ref=e19]:
+              - img [ref=e20]
+              - text: ルームID
+            - paragraph [ref=e24]: 4bb2a7ae-d2b4-41bc-8866-ee469c48b713
+          - generic [ref=e25]:
+            - generic [ref=e26]:
+              - img [ref=e27]
+              - text: 合言葉
+            - generic [ref=e30]:
+              - paragraph [ref=e31]: test-chat-1764027266
+              - button [ref=e32]:
+                - img
+        - generic [ref=e38]: 2/12
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - heading "参加プレイヤー (2/12)" [level=2] [ref=e41]:
+            - img [ref=e42]
+            - text: 参加プレイヤー
+            - generic [ref=e47]: (2/12)
+          - generic [ref=e48]: "準備完了: 2/2"
+        - generic [ref=e49]:
+          - generic [ref=e51]:
+            - generic [ref=e52]: G
+            - generic [ref=e53]:
+              - paragraph [ref=e54]: GuestPlaye
+              - generic [ref=e56]:
+                - img [ref=e57]
+                - text: 準備完了
+          - generic [ref=e61]:
+            - generic [ref=e62]: H
+            - generic [ref=e63]:
+              - paragraph [ref=e64]: HostPlayer
+              - generic [ref=e66]:
+                - img [ref=e67]
+                - text: ホスト
+          - generic [ref=e71]: 空き
+          - generic [ref=e73]: 空き
+          - generic [ref=e75]: 空き
+          - generic [ref=e77]: 空き
+          - generic [ref=e79]: 空き
+          - generic [ref=e81]: 空き
+          - generic [ref=e83]: 空き
+          - generic [ref=e85]: 空き
+          - generic [ref=e87]: 空き
+          - generic [ref=e89]: 空き
+        - paragraph [ref=e91]: ゲームを開始するには最低3人必要です
+      - generic [ref=e92]:
+        - generic [ref=e93]:
+          - img [ref=e94]
+          - heading "ゲーム設定" [level=2] [ref=e97]
+          - generic [ref=e98]: ホストのみ変更可能
+        - generic [ref=e99]:
+          - generic [ref=e100]:
+            - generic [ref=e101]:
+              - img [ref=e102]
+              - text: 質問フェーズの制限時間
+            - combobox [ref=e105]:
+              - generic: 5分（推奨）
+              - img [ref=e106]
+          - generic [ref=e108]:
+            - generic [ref=e109]:
+              - img [ref=e110]
+              - text: お題のカテゴリ
+            - combobox [ref=e113]:
+              - img [ref=e114]
+        - paragraph [ref=e117]: 設定はゲーム開始前にいつでも変更できます。推奨設定は5分・一般カテゴリです。
+      - generic [ref=e118]:
+        - button "ゲームを開始する" [disabled]:
+          - img
+          - text: ゲームを開始する
+      - generic [ref=e120]:
+        - img [ref=e122]
+        - generic [ref=e125]:
+          - paragraph [ref=e126]: 友達を招待しよう
+          - paragraph [ref=e127]: 合言葉「test-chat-1764027266」を共有してプレイヤーを招待できます
+        - button "コピー" [ref=e128]:
+          - img [ref=e129]
+          - text: コピー
+    - generic [ref=e133]:
+      - button "ゲームを開始する" [disabled]:
+        - img
+        - text: ゲームを開始する
+  - region "Notifications alt+T"
+  - generic [ref=e138] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e139]:
+      - img [ref=e140]
+    - generic [ref=e143]:
+      - button "Open issues overlay" [ref=e144]:
+        - generic [ref=e145]:
+          - generic [ref=e146]: "0"
+          - generic [ref=e147]: "1"
+        - generic [ref=e148]: Issue
+      - button "Collapse issues badge" [ref=e149]:
+        - img [ref=e150]
+  - alert [ref=e152]
+```
