@@ -9,6 +9,7 @@ import { QuestionChat, type Question } from "./_components/QuestionChat"
 import { useGame } from "@/context/game-context"
 import { useRoom } from "@/context/room-context"
 import { api } from '@/lib/api';
+import { supabase } from "@/lib/supabase/client"
 
 function TimerRing({ remaining, total, size = 200 }: { remaining: number; total: number; size?: number }) {
     const radius = 45
@@ -55,7 +56,7 @@ function QuestionPhaseContent() {
     const role = assignedRole?.toLowerCase() || "common"
     const isMaster = role === "master"
 
-    // Chat State (Local for now, could be moved to context or mock API)
+    // Chat State
     const [questions, setQuestions] = useState<Question[]>([])
 
     useEffect(() => {
@@ -64,6 +65,60 @@ function QuestionPhaseContent() {
             return
         }
     }, [roomId, playerId, router])
+
+    // Subscribe to questions
+    useEffect(() => {
+        if (!roomId) return;
+
+        const fetchQuestions = async () => {
+            // Get latest session
+            const { data: session } = await supabase
+                .from('game_sessions')
+                .select('id')
+                .eq('room_id', roomId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (session) {
+                const { data } = await supabase
+                    .from('questions')
+                    .select('*, players(nickname)')
+                    .eq('session_id', session.id)
+                    .order('created_at', { ascending: true });
+
+                if (data) {
+                    const mappedQuestions: Question[] = data.map(q => ({
+                        id: q.id,
+                        text: q.text,
+                        answer: q.answer as 'pending' | 'yes' | 'no',
+                        timestamp: new Date(q.created_at).getTime(),
+                        playerName: q.players?.nickname || '不明'
+                    }));
+                    setQuestions(mappedQuestions);
+                }
+            }
+        };
+
+        fetchQuestions();
+
+        const channel = supabase
+            .channel(`questions:${roomId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'questions',
+                },
+                () => {
+                    fetchQuestions();
+                }
+            )
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel) }
+    }, [roomId]);
 
     // Navigate when phase changes
     useEffect(() => {
@@ -94,7 +149,6 @@ function QuestionPhaseContent() {
 
     const handleCorrectAnswer = async () => {
         // 討論フェーズへ（残り時間を引き継ぐ）
-        // setPhase('DEBATE') // Local update not needed if we rely on Realtime
         if (isMaster) {
             try {
                 await api.updatePhase(roomId!, 'DEBATE')
@@ -104,21 +158,22 @@ function QuestionPhaseContent() {
         }
     }
 
-    const handleAskQuestion = (text: string) => {
-        const newQuestion: Question = {
-            id: Math.random().toString(36).substr(2, 9),
-            text,
-            answer: 'pending',
-            timestamp: Date.now(),
-            playerName: role === 'insider' ? 'インサイダー' : '庶民'
+    const handleAskQuestion = async (text: string) => {
+        if (!roomId || !playerId) return;
+        try {
+            await api.askQuestion(roomId, playerId, text);
+        } catch (error) {
+            console.error("Failed to ask question:", error);
         }
-        setQuestions(prev => [...prev, newQuestion])
     }
 
-    const handleAnswerQuestion = (id: string, answer: 'yes' | 'no') => {
-        setQuestions(prev => prev.map(q =>
-            q.id === id ? { ...q, answer } : q
-        ))
+    const handleAnswerQuestion = async (id: string, answer: 'yes' | 'no') => {
+        if (!isMaster) return;
+        try {
+            await api.answerQuestion(id, answer);
+        } catch (error) {
+            console.error("Failed to answer question:", error);
+        }
     }
 
     if (!assignedRole) return null

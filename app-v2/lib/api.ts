@@ -29,7 +29,17 @@ export const api = {
                     .eq('room_id', existingRoom.id)
                     .eq('is_connected', true);
 
-                if (count === 0) {
+                // Check if room is expired (older than 2 hours)
+                const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+                const { data: roomData } = await supabase
+                    .from('rooms')
+                    .select('updated_at')
+                    .eq('id', existingRoom.id)
+                    .single();
+
+                const isExpired = roomData?.updated_at && roomData.updated_at < twoHoursAgo;
+
+                if (count === 0 || isExpired) {
                     // Delete old room
                     await supabase.from('rooms').delete().eq('id', existingRoom.id);
                 } else {
@@ -232,10 +242,75 @@ export const api = {
     },
 
     updatePhase: async (roomId: string, phase: string) => {
-        const { error } = await supabase
+        // Update Room
+        const { error: roomError } = await supabase
             .from('rooms')
             .update({ phase })
             .eq('id', roomId);
+
+        if (roomError) throw roomError;
+
+        // Update latest Game Session if exists
+        // This is crucial for triggers that rely on session phase (like Vote1)
+        const { data: session } = await supabase
+            .from('game_sessions')
+            .select('id')
+            .eq('room_id', roomId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (session) {
+            await supabase
+                .from('game_sessions')
+                .update({ phase })
+                .eq('id', session.id);
+        }
+
+        return { success: true };
+    },
+
+    leaveRoom: async (roomId: string, playerId: string) => {
+        const { error } = await supabase
+            .from('players')
+            .update({ is_connected: false })
+            .eq('id', playerId)
+            .eq('room_id', roomId);
+
+        if (error) throw error;
+        return { success: true };
+    },
+
+    askQuestion: async (roomId: string, playerId: string, text: string) => {
+        // Get latest session
+        const { data: session } = await supabase
+            .from('game_sessions')
+            .select('id')
+            .eq('room_id', roomId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (!session) throw new Error('No active session');
+
+        const { error } = await supabase
+            .from('questions')
+            .insert({
+                session_id: session.id,
+                player_id: playerId,
+                text,
+                answer: 'pending'
+            });
+
+        if (error) throw error;
+        return { success: true };
+    },
+
+    answerQuestion: async (questionId: string, answer: 'yes' | 'no') => {
+        const { error } = await supabase
+            .from('questions')
+            .update({ answer })
+            .eq('id', questionId);
 
         if (error) throw error;
         return { success: true };

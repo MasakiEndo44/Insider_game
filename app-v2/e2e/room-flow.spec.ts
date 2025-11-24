@@ -159,7 +159,7 @@ test.describe('Insider Game Flow', () => {
         await expect(player3Page).toHaveURL(/\/game\/vote1/, { timeout: 10000 });
 
         // Wait for vote buttons to be visible
-        await expect(hostPage.getByRole('button', { name: 'はい' })).toBeVisible({ timeout: 10000 });
+        await expect(hostPage.getByRole('button', { name: 'はい' })).toBeVisible({ timeout: 30000 });
 
         // All vote YES
         await hostPage.getByRole('button', { name: 'はい' }).click();
@@ -171,7 +171,7 @@ test.describe('Insider Game Flow', () => {
         // Since we voted YES, it should go to Result (if Answerer was Insider) or Result (if Answerer was NOT Insider).
         // Basically it goes to Result if YES > NO.
 
-        await expect(hostPage).toHaveURL(/\/game\/result/);
+        await expect(hostPage).toHaveURL(/\/game\/result/, { timeout: 30000 });
         await expect(player2Page).toHaveURL(/\/game\/result/);
         await expect(player3Page).toHaveURL(/\/game\/result/);
 

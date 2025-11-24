@@ -30,7 +30,7 @@ const ROLE_INFO = {
 function ResultContent() {
     const router = useRouter()
     const { outcome, topic, roles, setPhase, setRoles, setTopic, setOutcome, setTimer } = useGame()
-    const { roomId, players, resetRoom } = useRoom()
+    const { roomId, players, resetRoom, playerId } = useRoom()
 
     const isCommonWin = outcome === "CITIZENS_WIN"
     const isInsiderWin = outcome === "INSIDER_WIN"
@@ -60,7 +60,16 @@ function ResultContent() {
     }
 
     const handleLeave = async () => {
-        // Just client side cleanup for now
+        if (roomId && playerId) {
+            try {
+                // Explicitly leave room in DB
+                await api.leaveRoom(roomId, playerId);
+            } catch (error) {
+                console.error('Failed to leave room:', error);
+            }
+        }
+
+        // Client side cleanup
         resetRoom()
         router.push("/")
     }
