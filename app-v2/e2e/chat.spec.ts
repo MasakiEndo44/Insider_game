@@ -34,11 +34,10 @@ test.describe('Chat Functionality', () => {
         await expect(page2).toHaveURL(/\/lobby/);
 
         // 3. Start Game
-        // Reload page1 to ensure player list is updated (workaround for potential realtime delay in test)
-        await page1.reload();
         // Wait for both players to be visible in lobby
-        await expect(page1.getByText('GuestPlayer')).toBeVisible();
-        await expect(page2.getByText('HostPlayer')).toBeVisible();
+        // Realtime should update the list. We give it a bit more time.
+        await expect(page1.getByText('GuestPlayer')).toBeVisible({ timeout: 10000 });
+        await expect(page2.getByText('HostPlayer')).toBeVisible({ timeout: 10000 });
 
         await page1.getByRole('button', { name: 'ゲームを開始' }).click();
 

@@ -11,6 +11,8 @@ import { useRoom } from "@/context/room-context"
 import { api } from '@/lib/api';
 import { supabase } from "@/lib/supabase/client"
 
+import { toast } from 'sonner'
+
 function TimerRing({ remaining, total, size = 200 }: { remaining: number; total: number; size?: number }) {
     const radius = 45
     const circumference = 2 * Math.PI * radius
@@ -58,6 +60,7 @@ function QuestionPhaseContent() {
 
     // Chat State
     const [questions, setQuestions] = useState<Question[]>([])
+    const [deadline, setDeadline] = useState<number | null>(null)
 
     useEffect(() => {
         if (!roomId || !playerId) {
@@ -66,7 +69,7 @@ function QuestionPhaseContent() {
         }
     }, [roomId, playerId, router])
 
-    // Subscribe to questions
+    // Subscribe to questions and sync timer
     useEffect(() => {
         if (!roomId) return;
 
@@ -74,13 +77,24 @@ function QuestionPhaseContent() {
             // Get latest session
             const { data: session } = await supabase
                 .from('game_sessions')
-                .select('id')
+                .select('id, created_at, time_limit')
                 .eq('room_id', roomId)
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .single();
 
             if (session) {
+                // Sync timer
+                const createdAt = new Date(session.created_at).getTime();
+                const timeLimit = session.time_limit || 300;
+                const calculatedDeadline = createdAt + timeLimit * 1000;
+                setDeadline(calculatedDeadline);
+
+                // Initial timer set
+                const now = Date.now();
+                const remaining = Math.max(0, Math.floor((calculatedDeadline - now) / 1000));
+                setTimer(remaining);
+
                 const { data } = await supabase
                     .from('questions')
                     .select('*, players(nickname)')
@@ -118,7 +132,7 @@ function QuestionPhaseContent() {
             .subscribe();
 
         return () => { supabase.removeChannel(channel) }
-    }, [roomId]);
+    }, [roomId, setTimer]);
 
     // Navigate when phase changes
     useEffect(() => {
@@ -129,23 +143,26 @@ function QuestionPhaseContent() {
         }
     }, [phase, router])
 
+    // Timer countdown based on deadline
     useEffect(() => {
+        if (!deadline) return;
+
         const interval = setInterval(() => {
-            setTimer(Math.max(0, timer - 1))
-        }, 1000)
+            const now = Date.now();
+            const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
+            setTimer(remaining);
 
-        if (timer <= 0) {
-            clearInterval(interval)
-            // Timeout -> All Lose (or specific rule)
-            // Only Host should trigger phase change on timeout to avoid race conditions
-            if (isMaster && phase !== 'RESULT') {
-                // setOutcome('ALL_LOSE') // This should be synced via DB
-                // api.updatePhase(roomId!, 'RESULT')
+            if (remaining <= 0) {
+                clearInterval(interval);
+                // Timeout logic
+                if (isMaster && phase !== 'RESULT') {
+                    // Handle timeout
+                }
             }
-        }
+        }, 1000);
 
-        return () => clearInterval(interval)
-    }, [timer, setTimer, isMaster, phase, roomId])
+        return () => clearInterval(interval);
+    }, [deadline, setTimer, isMaster, phase, roomId]);
 
     const handleCorrectAnswer = async () => {
         // 討論フェーズへ（残り時間を引き継ぐ）
@@ -154,6 +171,7 @@ function QuestionPhaseContent() {
                 await api.updatePhase(roomId!, 'DEBATE')
             } catch (error) {
                 console.error("Failed to update phase:", error)
+                toast.error('フェーズの更新に失敗しました')
             }
         }
     }
@@ -164,6 +182,7 @@ function QuestionPhaseContent() {
             await api.askQuestion(roomId, playerId, text);
         } catch (error) {
             console.error("Failed to ask question:", error);
+            toast.error('質問の送信に失敗しました')
         }
     }
 
@@ -173,6 +192,7 @@ function QuestionPhaseContent() {
             await api.answerQuestion(id, answer);
         } catch (error) {
             console.error("Failed to answer question:", error);
+            toast.error('回答の送信に失敗しました')
         }
     }
 

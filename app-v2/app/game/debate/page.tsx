@@ -6,6 +6,8 @@ import { Users } from "lucide-react"
 import { useGame } from "@/context/game-context"
 import { useRoom } from "@/context/room-context"
 import { api } from '@/lib/api';
+import { supabase } from "@/lib/supabase/client"
+import { toast } from 'sonner'
 
 function TimerRing({ remaining, total, size = 200 }: { remaining: number; total: number; size?: number }) {
     const radius = 45
@@ -48,24 +50,8 @@ function DebatePhaseContent() {
     const { timer, setTimer, phase } = useGame()
     const { roomId, playerId, players } = useRoom()
     const isHost = players.find(p => p.id === playerId)?.isHost
-
-    // Initial remaining time comes from the previous phase via context
-    // But if we refresh, we rely on context state.
-    // We might want to store the "total debate time" somewhere if we want the ring to be accurate relative to total.
-    // For now, let's assume the timer carried over is the total or close to it, or just use a fixed total for the ring visual if needed.
-    // Actually, the debate phase usually has a fixed time or carries over.
-    // In the previous logic: `remaining` was passed from query params.
-    // Now `timer` is in context.
-
-    // Listen for phase change
-    useEffect(() => {
-        if (phase === 'VOTE1') {
-            router.push("/game/vote1")
-        }
-    }, [phase, router])
-
-    // If we want to visualize "Total" for the ring, we might need another state or just use the starting value of timer when component mounts.
-    const [initialTotal] = useState(timer > 0 ? timer : 180)
+    const [deadline, setDeadline] = useState<number | null>(null)
+    const [initialTotal, setInitialTotal] = useState(300)
 
     useEffect(() => {
         if (!roomId) {
@@ -74,19 +60,62 @@ function DebatePhaseContent() {
         }
     }, [roomId, router])
 
+    // Sync timer with server
     useEffect(() => {
-        const interval = setInterval(() => {
-            setTimer(Math.max(0, timer - 1))
-        }, 1000)
+        if (!roomId) return;
 
-        if (timer <= 0 && isHost) {
-            clearInterval(interval)
-            // Host triggers next phase
-            api.updatePhase(roomId!, 'VOTE1');
+        const syncTimer = async () => {
+            const { data: session } = await supabase
+                .from('game_sessions')
+                .select('id, created_at, time_limit')
+                .eq('room_id', roomId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (session) {
+                const createdAt = new Date(session.created_at).getTime();
+                const timeLimit = session.time_limit || 300;
+                const calculatedDeadline = createdAt + timeLimit * 1000;
+                setDeadline(calculatedDeadline);
+                setInitialTotal(timeLimit);
+
+                const now = Date.now();
+                const remaining = Math.max(0, Math.floor((calculatedDeadline - now) / 1000));
+                setTimer(remaining);
+            }
+        };
+
+        syncTimer();
+    }, [roomId, setTimer]);
+
+    // Listen for phase change
+    useEffect(() => {
+        if (phase === 'VOTE1') {
+            router.push("/game/vote1")
         }
+    }, [phase, router])
 
-        return () => clearInterval(interval)
-    }, [timer, setTimer, isHost, roomId])
+    // Timer countdown based on deadline
+    useEffect(() => {
+        if (!deadline) return;
+
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
+            setTimer(remaining);
+
+            if (remaining <= 0 && isHost) {
+                clearInterval(interval);
+                api.updatePhase(roomId!, 'VOTE1').catch(error => {
+                    console.error("Failed to update phase:", error);
+                    toast.error('フェーズの更新に失敗しました');
+                });
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [deadline, setTimer, isHost, roomId])
 
     return (
         <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px' }}>

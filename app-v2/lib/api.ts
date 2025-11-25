@@ -15,33 +15,26 @@ export const api = {
             if (!userId) throw new APIError(ERROR_MESSAGES.SESSION_EXPIRED, 'AUTH_FAILED', 401);
 
             // 2. Clean up existing rooms
-            const { data: existingRoom } = await supabase
-                .from('rooms')
-                .select('id, host_id')
-                .eq('passphrase_hash', passphrase)
-                .single();
+            // Use RPC to safely check room status without exposing players table
+            const { data: roomStatus } = await supabase
+                .rpc('get_room_status', { check_passphrase_hash: passphrase });
 
-            if (existingRoom) {
-                // Check if active players
-                const { count } = await supabase
-                    .from('players')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('room_id', existingRoom.id)
-                    .eq('is_connected', true);
+            if (roomStatus && roomStatus.length > 0) {
+                const existingRoom = roomStatus[0];
+                const count = existingRoom.player_count;
 
                 // Check if room is expired (older than 2 hours)
                 const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-                const { data: roomData } = await supabase
-                    .from('rooms')
-                    .select('updated_at')
-                    .eq('id', existingRoom.id)
-                    .single();
-
-                const isExpired = roomData?.updated_at && roomData.updated_at < twoHoursAgo;
+                const isExpired = existingRoom.last_updated && existingRoom.last_updated < twoHoursAgo;
 
                 if (count === 0 || isExpired) {
-                    // Delete old room
-                    await supabase.from('rooms').delete().eq('id', existingRoom.id);
+                    // Use RPC to clean up the room (bypasses RLS)
+                    const { data: cleaned, error: cleanupError } = await supabase
+                        .rpc('cleanup_room', { check_passphrase_hash: passphrase });
+
+                    if (cleanupError || !cleaned) {
+                        throw new APIError(ERROR_MESSAGES.DUPLICATE_ROOM, 'DUPLICATE_ROOM', 409);
+                    }
                 } else {
                     throw new APIError(ERROR_MESSAGES.DUPLICATE_ROOM, 'DUPLICATE_ROOM', 409);
                 }
@@ -160,13 +153,13 @@ export const api = {
         }
     },
 
-    startGame: async (roomId: string, category: string = '全般') => {
+    startGame: async (roomId: string, category: string = '全般', timeLimit: number = 300) => {
         // 1. Create Game Session
         const { data: session, error: sessionError } = await supabase
             .from('game_sessions')
             .insert({
                 room_id: roomId,
-                time_limit: 300, // Default 5 min
+                time_limit: timeLimit,
                 category,
                 phase: 'DEAL'
             })

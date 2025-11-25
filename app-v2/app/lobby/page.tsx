@@ -11,6 +11,7 @@ import Image from "next/image"
 import { useRoom } from "@/context/room-context"
 import { useGame } from "@/context/game-context"
 import { api } from '@/lib/api'
+import { toast } from 'sonner'
 
 function LobbyContent() {
     const router = useRouter()
@@ -42,6 +43,7 @@ function LobbyContent() {
         if (passphrase) {
             await navigator.clipboard.writeText(passphrase)
             setCopied(true)
+            toast.success('合言葉をコピーしました')
             setTimeout(() => setCopied(false), 2000)
         }
     }
@@ -51,10 +53,12 @@ function LobbyContent() {
 
         setIsStarting(true)
         try {
-            await api.startGame(roomId, category)
+            // Convert minutes to seconds
+            await api.startGame(roomId, category, timeLimit * 60)
             // Navigation handled by useEffect on phase change
         } catch (error) {
             console.error("Failed to start game:", error)
+            toast.error('ゲームの開始に失敗しました')
             setIsStarting(false)
         }
     }
