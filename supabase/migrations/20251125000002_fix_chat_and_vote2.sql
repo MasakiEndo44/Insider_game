@@ -1,7 +1,12 @@
 -- 20251125_fix_chat_and_vote2.sql
 
 -- 1. Enable Realtime for questions table
-ALTER PUBLICATION supabase_realtime ADD TABLE questions;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'questions') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE questions;
+  END IF;
+END $$;
 
 -- 2. Update check_vote_completion trigger to handle VOTE2 logic
 CREATE OR REPLACE FUNCTION check_vote_completion()

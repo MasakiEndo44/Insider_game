@@ -15,12 +15,15 @@ ALTER TABLE questions ENABLE ROW LEVEL SECURITY;
 -- RLS Policies
 
 -- Read: Everyone in the room (or public for MVP simplicity)
+DROP POLICY IF EXISTS "public_read_questions" ON questions;
 CREATE POLICY "public_read_questions" ON questions FOR SELECT USING (true);
 
 -- Insert: Authenticated users (players)
+DROP POLICY IF EXISTS "anon_insert_questions" ON questions;
 CREATE POLICY "anon_insert_questions" ON questions FOR INSERT WITH CHECK (true);
 
 -- Update: Master only (but for MVP allowing public update for answer)
 -- Ideally should check if user is Master, but since we use anonymous auth and role logic is complex in RLS without helper functions,
 -- we'll allow update for now and handle logic in client/API.
+DROP POLICY IF EXISTS "anon_update_questions" ON questions;
 CREATE POLICY "anon_update_questions" ON questions FOR UPDATE USING (true);

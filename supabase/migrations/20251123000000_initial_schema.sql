@@ -108,6 +108,7 @@ ALTER TABLE results ENABLE ROW LEVEL SECURITY;
 
 -- Role Secrecy: Only see your own role, or everyone sees if phase is RESULT
 -- Note: This requires game_sessions phase to be updated correctly.
+DROP POLICY IF EXISTS "role_secrecy" ON roles;
 CREATE POLICY "role_secrecy" ON roles
   FOR SELECT
   USING (
@@ -120,6 +121,7 @@ CREATE POLICY "role_secrecy" ON roles
   );
 
 -- Topic Secrecy: Master and Insider see topic, or everyone if phase is RESULT
+DROP POLICY IF EXISTS "topic_secrecy" ON topics;
 CREATE POLICY "topic_secrecy" ON topics
   FOR SELECT
   USING (
@@ -138,23 +140,36 @@ CREATE POLICY "topic_secrecy" ON topics
 
 -- General Access Policies (Permissive for now to allow development, tighten later)
 -- Allow reading everything for now
+DROP POLICY IF EXISTS "public_read_rooms" ON rooms;
 CREATE POLICY "public_read_rooms" ON rooms FOR SELECT USING (true);
+DROP POLICY IF EXISTS "public_read_players" ON players;
 CREATE POLICY "public_read_players" ON players FOR SELECT USING (true);
+DROP POLICY IF EXISTS "public_read_sessions" ON game_sessions;
 CREATE POLICY "public_read_sessions" ON game_sessions FOR SELECT USING (true);
+DROP POLICY IF EXISTS "public_read_votes" ON votes;
 CREATE POLICY "public_read_votes" ON votes FOR SELECT USING (true);
+DROP POLICY IF EXISTS "public_read_results" ON results;
 CREATE POLICY "public_read_results" ON results FOR SELECT USING (true);
+DROP POLICY IF EXISTS "public_read_master_topics" ON master_topics;
 CREATE POLICY "public_read_master_topics" ON master_topics FOR SELECT USING (true);
 
 -- Allow insert/update for authenticated (anon) users
+DROP POLICY IF EXISTS "anon_insert_rooms" ON rooms;
 CREATE POLICY "anon_insert_rooms" ON rooms FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "anon_update_rooms" ON rooms;
 CREATE POLICY "anon_update_rooms" ON rooms FOR UPDATE USING (true);
 
+DROP POLICY IF EXISTS "anon_insert_players" ON players;
 CREATE POLICY "anon_insert_players" ON players FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "anon_update_players" ON players;
 CREATE POLICY "anon_update_players" ON players FOR UPDATE USING (true);
 
+DROP POLICY IF EXISTS "anon_insert_sessions" ON game_sessions;
 CREATE POLICY "anon_insert_sessions" ON game_sessions FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "anon_update_sessions" ON game_sessions;
 CREATE POLICY "anon_update_sessions" ON game_sessions FOR UPDATE USING (true);
 
+DROP POLICY IF EXISTS "anon_insert_votes" ON votes;
 CREATE POLICY "anon_insert_votes" ON votes FOR INSERT WITH CHECK (true);
 
 -- Roles and Topics are inserted by Edge Functions (Service Role), so no public insert needed usually.
