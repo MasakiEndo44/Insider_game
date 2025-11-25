@@ -14,27 +14,31 @@ export const api = {
 
             if (!userId) throw new APIError(ERROR_MESSAGES.SESSION_EXPIRED, 'AUTH_FAILED', 401);
 
-            // 2. Clean up existing rooms
-            // Use RPC to safely check room status without exposing players table
-            const { data: roomStatus } = await supabase
-                .rpc('get_room_status', { check_passphrase_hash: passphrase });
+            // 2. Check for existing room with same passphrase
+            const { data: existingRoom } = await supabase
+                .from('rooms')
+                .select('id, updated_at')
+                .eq('passphrase_hash', passphrase)
+                .single();
 
-            if (roomStatus && roomStatus.length > 0) {
-                const existingRoom = roomStatus[0];
-                const count = existingRoom.player_count;
-
+            if (existingRoom) {
                 // Check if room is expired (older than 2 hours)
                 const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-                const isExpired = existingRoom.last_updated && existingRoom.last_updated < twoHoursAgo;
+                const isExpired = existingRoom.updated_at && existingRoom.updated_at < twoHoursAgo;
+
+                // Count active players
+                const { count } = await supabase
+                    .from('players')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('room_id', existingRoom.id)
+                    .eq('is_connected', true);
 
                 if (count === 0 || isExpired) {
-                    // Use RPC to clean up the room (bypasses RLS)
-                    const { data: cleaned, error: cleanupError } = await supabase
-                        .rpc('cleanup_room', { check_passphrase_hash: passphrase });
-
-                    if (cleanupError || !cleaned) {
-                        throw new APIError(ERROR_MESSAGES.DUPLICATE_ROOM, 'DUPLICATE_ROOM', 409);
-                    }
+                    // Delete the old room (CASCADE will handle related records)
+                    await supabase
+                        .from('rooms')
+                        .delete()
+                        .eq('id', existingRoom.id);
                 } else {
                     throw new APIError(ERROR_MESSAGES.DUPLICATE_ROOM, 'DUPLICATE_ROOM', 409);
                 }

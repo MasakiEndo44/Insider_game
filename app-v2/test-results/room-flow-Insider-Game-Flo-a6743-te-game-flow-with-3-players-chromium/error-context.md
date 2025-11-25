@@ -47,7 +47,7 @@
           - img [ref=e28]
           - textbox "合言葉" [ref=e31]:
             - /placeholder: "例: sakura2024"
-            - text: test-chat-1764030984
+            - text: testroom-17640317842
         - paragraph [ref=e32]: 他のプレイヤーが参加する際に必要です
       - generic [ref=e33]:
         - text: プレイヤー名
@@ -55,7 +55,7 @@
           - img [ref=e35]
           - textbox "プレイヤー名" [ref=e38]:
             - /placeholder: "例: たろう"
-            - text: HostPlayer
+            - text: Host
     - generic [ref=e39]:
       - button "キャンセル" [ref=e40]
       - button "ルームを作る" [ref=e41]
