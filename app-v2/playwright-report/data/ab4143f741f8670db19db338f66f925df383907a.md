@@ -47,7 +47,7 @@
           - img [ref=e28]
           - textbox "合言葉" [ref=e31]:
             - /placeholder: "例: sakura2024"
-            - text: testroom-17640317842
+            - text: testroom-17640403082
         - paragraph [ref=e32]: 他のプレイヤーが参加する際に必要です
       - generic [ref=e33]:
         - text: プレイヤー名
