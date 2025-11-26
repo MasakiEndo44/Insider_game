@@ -113,7 +113,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
             const { data } = await supabase
                 .from('players')
                 .select('*')
-                .eq('room_id', state.roomId);
+                .eq('room_id', state.roomId)
+                .eq('is_connected', true); // Only fetch connected players
 
             if (data) {
                 const mappedPlayers: Player[] = data.map((p: { id: string; nickname: string; is_host: boolean; is_ready: boolean; is_connected: boolean }) => ({
@@ -140,7 +141,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
                     table: 'players',
                     filter: `room_id=eq.${state.roomId}`
                 },
-                () => {
+                (payload) => {
                     fetchPlayers();
                 }
             )

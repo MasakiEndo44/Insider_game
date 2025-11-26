@@ -121,7 +121,7 @@ export function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
                     <Button
                         onClick={handleJoin}
                         disabled={!passphraseInput.trim() || !playerName.trim() || isLoading}
-                        className="flex-1 h-12 font-bold"
+                        className="flex-1 h-12 font-bold transition-all duration-300 hover:shadow-[0_0_20px_rgba(229,0,18,0.3)]"
                     >
                         {isLoading ? "参加中..." : "参加する"}
                     </Button>

@@ -22,6 +22,11 @@
   --error: #EF4444;
   --info: #3B82F6;
 
+  /* Glow Effects */
+  --glow-red: 0 0 20px rgba(229, 0, 18, 0.3);
+  --glow-red-strong: 0 0 30px rgba(229, 0, 18, 0.5);
+  --glow-red-intense: 0 0 40px rgba(229, 0, 18, 0.7);
+
   /* Spacing */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
@@ -54,6 +59,7 @@
 
   /* Typography */
   --font-sans: 'Noto Sans JP', system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
 
   /* Custom Animations */
   --animate-fade-in: fade-in 0.3s ease-in-out;
@@ -148,6 +154,39 @@ body::before {
 
 .animate-slide-in {
   animation: slide-in 0.4s ease-out;
+}
+
+/* Glassmorphism Utilities */
+.glass-card {
+  background: rgba(26, 26, 26, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-card-light {
+  background: rgba(26, 26, 26, 0.4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Glow Utilities */
+.glow-red {
+  box-shadow: var(--glow-red);
+}
+
+.glow-red-strong {
+  box-shadow: var(--glow-red-strong);
+}
+
+.glow-red-intense {
+  box-shadow: var(--glow-red-intense);
+}
+
+/* Monospace Text */
+.font-mono {
+  font-family: var(--font-mono);
 }
 
 /* Container */

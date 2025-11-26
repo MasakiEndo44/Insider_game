@@ -39,7 +39,8 @@ export function QuestionChat({ role, questions, onAskQuestion, onAnswerQuestion 
     }
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter" && !e.shiftKey) {
+        // Prevent double-send during Japanese IME composition
+        if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault()
             handleSend()
         }
@@ -71,8 +72,8 @@ export function QuestionChat({ role, questions, onAskQuestion, onAnswerQuestion 
                     questions.map((q) => (
                         <div key={q.id} className="animate-fade-in">
                             <div className={`p-3 rounded-lg border ${q.answer === 'yes' ? 'bg-success/10 border-success/30' :
-                                    q.answer === 'no' ? 'bg-game-red/10 border-game-red/30' :
-                                        'bg-card border-border'
+                                q.answer === 'no' ? 'bg-game-red/10 border-game-red/30' :
+                                    'bg-card border-border'
                                 }`}>
                                 <div className="flex justify-between items-start mb-1">
                                     <span className="text-xs text-foreground-secondary font-mono">

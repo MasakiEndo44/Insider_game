@@ -15,22 +15,25 @@ export function PlayerChip({ name, isHost, isReady, isCurrentPlayer = false, ani
     return (
         <div
             className={cn(
-                "relative h-16 rounded-lg border-2 transition-all duration-300 animate-slide-in",
+                "relative h-16 rounded-lg border transition-all duration-300 animate-slide-in",
                 isCurrentPlayer
-                    ? "bg-game-red/10 border-game-red backdrop-blur-sm"
-                    : "bg-surface/30 border-border backdrop-blur-sm hover:border-foreground/30",
-                isReady && "ring-2 ring-success/30",
+                    ? "bg-game-red/10 border-game-red/50 backdrop-blur-sm glow-red"
+                    : "bg-surface/40 border-foreground/10 backdrop-blur-sm hover:border-foreground/20",
+                isReady && "ring-1 ring-success/40",
             )}
-            style={{ animationDelay: `${animationDelay}ms` }}
+            style={{
+                animationDelay: `${animationDelay}ms`,
+                boxShadow: isCurrentPlayer ? 'var(--glow-red)' : 'none'
+            }}
         >
             <div className="h-full flex items-center gap-3 px-4">
                 {/* Avatar */}
                 <div
                     className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 border-2",
+                        "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 border",
                         isCurrentPlayer
-                            ? "bg-game-red/20 text-game-red border-game-red"
-                            : "bg-transparent text-foreground border-foreground/30",
+                            ? "bg-game-red/20 text-game-red border-game-red/60"
+                            : "bg-transparent text-foreground border-foreground/20",
                     )}
                 >
                     {name.charAt(0)}

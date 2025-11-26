@@ -10,7 +10,7 @@ import { useRoom } from "@/context/room-context"
 import { supabase } from "@/lib/supabase/client"
 import { api } from '@/lib/api';
 
-function VoteBreakdown({ roomId, players }: { roomId: string | null, players: any[] }) {
+function VoteBreakdown({ roomId, players, roles }: { roomId: string | null, players: any[], roles: any }) {
     const [votes, setVotes] = useState<any[]>([])
 
     useEffect(() => {
@@ -41,6 +41,12 @@ function VoteBreakdown({ roomId, players }: { roomId: string | null, players: an
     const vote1 = votes.filter(v => v.vote_type === 'VOTE1');
     const vote2 = votes.filter(v => v.vote_type === 'VOTE2');
 
+    // Count votes for vote2
+    const vote2Counts: Record<string, number> = {};
+    vote2.forEach(v => {
+        vote2Counts[v.vote_value] = (vote2Counts[v.vote_value] || 0) + 1;
+    });
+
     return (
         <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col gap-4">
             <h2 className="text-lg font-bold text-foreground">投票結果</h2>
@@ -48,18 +54,15 @@ function VoteBreakdown({ roomId, players }: { roomId: string | null, players: an
             {vote1.length > 0 && (
                 <div>
                     <h3 className="text-sm font-bold text-foreground-secondary mb-2">第一投票 (正解者への告発)</h3>
-                    <div className="space-y-2">
-                        {vote1.map(v => {
-                            const voter = players.find(p => p.id === v.player_id)?.nickname || '不明';
-                            return (
-                                <div key={v.id} className="flex justify-between text-sm">
-                                    <span className="text-foreground">{voter}</span>
-                                    <span className={v.vote_value === 'yes' ? 'text-game-red font-bold' : 'text-success font-bold'}>
-                                        {v.vote_value === 'yes' ? '黒 (インサイダーだと思う)' : '白 (インサイダーではない)'}
-                                    </span>
-                                </div>
-                            )
-                        })}
+                    <div className="flex gap-6 text-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="text-game-red font-bold">黒票:</span>
+                            <span className="text-foreground text-lg font-bold">{vote1.filter(v => v.vote_value === 'yes').length}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-success font-bold">白票:</span>
+                            <span className="text-foreground text-lg font-bold">{vote1.filter(v => v.vote_value === 'no').length}</span>
+                        </div>
                     </div>
                 </div>
             )}
@@ -68,17 +71,25 @@ function VoteBreakdown({ roomId, players }: { roomId: string | null, players: an
                 <div>
                     <h3 className="text-sm font-bold text-foreground-secondary mb-2 mt-4">第二投票 (誰がインサイダーか)</h3>
                     <div className="space-y-2">
-                        {vote2.map(v => {
-                            const voter = players.find(p => p.id === v.player_id)?.nickname || '不明';
-                            const target = players.find(p => p.id === v.vote_value)?.nickname || '不明';
-                            return (
-                                <div key={v.id} className="flex justify-between text-sm">
-                                    <span className="text-foreground">{voter}</span>
-                                    <span className="text-foreground-secondary">→</span>
-                                    <span className="text-game-red font-bold">{target}</span>
-                                </div>
-                            )
-                        })}
+                        {players
+                            .filter(p => roles[p.id] !== 'MASTER') // Exclude MASTER
+                            .map(player => {
+                                const count = vote2Counts[player.id] || 0;
+                                return (
+                                    <div key={player.id} className="flex justify-between items-center text-sm py-2">
+                                        <span className="text-foreground font-medium">{player.nickname}</span>
+                                        <div className="flex gap-1 items-center">
+                                            {count > 0 ? (
+                                                Array.from({ length: count }).map((_, i) => (
+                                                    <div key={i} className="w-6 h-6 rounded-full border-2 border-foreground bg-transparent" />
+                                                ))
+                                            ) : (
+                                                <span className="text-foreground-secondary text-xs">0票</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                     </div>
                 </div>
             )}
@@ -228,7 +239,7 @@ function ResultContent() {
                 </div>
 
                 {/* Vote Breakdown */}
-                <VoteBreakdown roomId={roomId} players={players} />
+                <VoteBreakdown roomId={roomId} players={players} roles={roles} />
             </div>
 
             {/* Fixed Bottom Actions */}

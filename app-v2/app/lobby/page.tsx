@@ -63,10 +63,17 @@ function LobbyContent() {
         }
     }
 
-    const handleLeave = () => {
-        resetRoom()
-        router.push("/")
-    }
+    const handleLeave = async () => {
+        if (roomId && playerId) {
+            try {
+                await api.leaveRoom(roomId, playerId);
+            } catch (error) {
+                console.error('Failed to leave room:', error);
+            }
+        }
+        resetRoom();
+        router.push("/");
+    };
 
     if (!roomId) return null
 
@@ -75,7 +82,7 @@ function LobbyContent() {
     const canStart = isHost && players.length >= 3 && readyCount === players.length
 
     return (
-        <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px', paddingBottom: '128px' }}>
+        <div className="min-h-screen px-4 flex flex-col items-center" style={{ paddingTop: '64px', paddingBottom: '128px' }}>
             <div className="max-w-2xl w-full flex flex-col gap-8 animate-fade-in">
                 {/* Header */}
                 <div className="flex items-center justify-between">
@@ -108,7 +115,7 @@ function LobbyContent() {
                 />
 
                 {/* Players Section */}
-                <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-6 flex flex-col" style={{ padding: '24px', gap: '12px' }}>
+                <div className="glass-card rounded-xl p-6 flex flex-col border border-foreground/10" style={{ padding: '24px', gap: '16px' }}>
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-bold text-foreground flex items-center gap-2" style={{ gap: '8px' }}>
                             <Users className="w-5 h-5 text-game-red" />
@@ -136,9 +143,9 @@ function LobbyContent() {
                         {Array.from({ length: Math.max(0, 12 - players.length) }).map((_, i) => (
                             <div
                                 key={`empty-${i}`}
-                                className="h-16 rounded-lg border-2 border-dashed border-border bg-background/30 flex items-center justify-center"
+                                className="h-16 rounded-lg border border-dashed border-foreground/5 bg-background/10 flex items-center justify-center opacity-30"
                             >
-                                <span className="text-xs text-foreground/60">空き</span>
+                                <span className="text-xs text-foreground/40">空き</span>
                             </div>
                         ))}
                     </div>
@@ -161,11 +168,14 @@ function LobbyContent() {
                 )}
 
                 {isHost && (
-                    <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-6" style={{ padding: '24px' }}>
+                    <div className="glass-card rounded-xl p-6 border border-foreground/10" style={{ padding: '24px' }}>
                         <Button
                             onClick={handleStartGame}
                             disabled={!canStart || isStarting}
-                            className="w-full h-16 text-lg font-bold bg-transparent hover:bg-game-red/10 text-foreground border-2 border-foreground rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 hover:border-game-red hover:text-game-red disabled:hover:border-foreground disabled:hover:text-foreground"
+                            className="w-full h-16 text-lg font-bold bg-transparent hover:bg-game-red/10 text-foreground border border-foreground/70 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 hover:border-game-red hover:text-game-red disabled:hover:border-foreground/70 disabled:hover:text-foreground"
+                            style={{
+                                boxShadow: canStart && !isStarting ? 'var(--glow-red)' : 'none',
+                            }}
                         >
                             <Play className="w-6 h-6 mr-2" />
                             {isStarting ? "開始中..." : "ゲームを開始する"}
@@ -177,7 +187,7 @@ function LobbyContent() {
                 )}
 
                 {/* Share Info */}
-                <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-4" style={{ padding: '24px' }}>
+                <div className="glass-card rounded-xl p-4 border border-foreground/10" style={{ padding: '24px' }}>
                     <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-full bg-game-red/10 flex items-center justify-center flex-shrink-0">
                             <Copy className="w-5 h-5 text-game-red" />
@@ -217,7 +227,10 @@ function LobbyContent() {
                         <Button
                             onClick={handleStartGame}
                             disabled={!canStart || isStarting}
-                            className="w-full h-14 text-lg font-bold bg-transparent hover:bg-game-red/10 border-2 border-foreground/80 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 hover:border-game-red hover:text-game-red disabled:hover:border-foreground/80 disabled:hover:text-foreground text-foreground"
+                            className="w-full h-14 text-lg font-bold bg-transparent hover:bg-game-red/10 border border-foreground/70 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 hover:border-game-red hover:text-game-red disabled:hover:border-foreground/70 disabled:hover:text-foreground text-foreground"
+                            style={{
+                                boxShadow: canStart && !isStarting ? 'var(--glow-red)' : 'none',
+                            }}
                         >
                             <Play className="w-5 h-5 mr-2" />
                             {isStarting ? "開始中..." : "ゲームを開始する"}

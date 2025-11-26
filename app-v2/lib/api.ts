@@ -158,6 +158,10 @@ export const api = {
     },
 
     startGame: async (roomId: string, category: string = '全般', timeLimit: number = 300) => {
+        // Calculate deadline_epoch for timer synchronization
+        const startTime = Date.now();
+        const deadlineEpoch = startTime + (timeLimit * 1000);
+
         // 1. Create Game Session
         const { data: session, error: sessionError } = await supabase
             .from('game_sessions')
@@ -165,7 +169,9 @@ export const api = {
                 room_id: roomId,
                 time_limit: timeLimit,
                 category,
-                phase: 'DEAL'
+                phase: 'DEAL',
+                start_time: new Date(startTime).toISOString(),
+                deadline_epoch: deadlineEpoch
             })
             .select()
             .single();

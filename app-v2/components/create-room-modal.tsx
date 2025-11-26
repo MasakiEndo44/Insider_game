@@ -123,7 +123,7 @@ export function CreateRoomModal({ open, onClose }: CreateRoomModalProps) {
                     <Button
                         onClick={handleCreate}
                         disabled={!passphraseInput.trim() || !playerName.trim() || isLoading}
-                        className="flex-1 h-12 font-bold"
+                        className="flex-1 h-12 font-bold transition-all duration-300 hover:shadow-[0_0_20px_rgba(229,0,18,0.3)]"
                     >
                         {isLoading ? "作成中..." : "ルームを作る"}
                     </Button>

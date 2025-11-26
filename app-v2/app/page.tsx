@@ -12,7 +12,7 @@ export default function HomePage() {
   const [showJoinModal, setShowJoinModal] = useState(false)
 
   return (
-    <div className="min-h-screen flex flex-col items-center p-4" style={{ paddingTop: '64px' }}>
+    <div className="min-h-screen flex flex-col items-center px-4" style={{ paddingTop: '64px' }}>
       <div className="w-full max-w-md flex flex-col gap-8 animate-fade-in">
         <div className="text-center flex flex-col gap-4 items-center">
           <div className="inline-flex items-center justify-center w-32 h-32 mb-4 mx-auto">
@@ -29,7 +29,7 @@ export default function HomePage() {
           <p className="text-foreground/90 text-lg font-medium">オンライン推理ゲーム</p>
         </div>
 
-        <div className="bg-surface/50 backdrop-blur-sm border-2 border-border rounded-xl p-6 flex flex-col" style={{ padding: '24px', gap: '8px' }}>
+        <div className="glass-card rounded-xl p-6 flex flex-col border border-foreground/10" style={{ padding: '24px', gap: '8px' }}>
           <p className="text-sm leading-relaxed text-center text-foreground" style={{ lineHeight: '1.75' }}>
             マスター、インサイダー、庶民の3つの役職に分かれて遊ぶ推理ゲーム。
           </p>
@@ -42,7 +42,7 @@ export default function HomePage() {
           <Button
             onClick={() => setShowCreateModal(true)}
             variant="outline"
-            className="w-full h-14 text-lg font-bold bg-transparent hover:bg-game-red/10 text-foreground rounded-xl transition-all duration-200 hover:border-game-red hover:text-game-red border-2"
+            className="w-full h-14 text-lg font-bold bg-transparent hover:bg-game-red/10 text-foreground rounded-xl transition-all duration-300 hover:border-game-red hover:text-game-red border hover:shadow-[0_0_30px_rgba(229,0,18,0.4)]"
           >
             <Play className="w-5 h-5 mr-2" />
             PLAY
@@ -51,7 +51,7 @@ export default function HomePage() {
           <Button
             onClick={() => setShowJoinModal(true)}
             variant="outline"
-            className="w-full h-14 text-lg font-bold bg-transparent hover:bg-foreground/5 text-foreground border-2 rounded-xl transition-all duration-200"
+            className="w-full h-14 text-lg font-bold bg-transparent hover:bg-foreground/5 text-foreground border rounded-xl transition-all duration-200 hover:border-foreground/50"
           >
             <Users className="w-5 h-5 mr-2" />
             ルームに参加する

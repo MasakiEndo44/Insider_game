@@ -10,15 +10,19 @@ import { supabase } from "@/lib/supabase/client"
 
 function Vote2Content() {
     const router = useRouter()
-    const { topic, setPhase, setOutcome } = useGame()
+    const { topic, setPhase, setOutcome, roles } = useGame()
     const { roomId, playerId, players } = useRoom()
 
     const [voted, setVoted] = useState(false)
     const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null)
     const [votedCount, setVotedCount] = useState(0)
 
-    // Candidates are all other players
-    const candidates = players.filter(p => p.id !== playerId)
+    // Candidates are all other players except self and MASTER
+    const candidates = players.filter(p => {
+        if (p.id === playerId) return false; // Exclude self
+        const role = roles[p.id];
+        return role !== 'MASTER'; // Exclude MASTER
+    })
 
     useEffect(() => {
         if (!roomId || !playerId) {

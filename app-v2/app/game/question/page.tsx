@@ -77,23 +77,39 @@ function QuestionPhaseContent() {
             // Get latest session
             const { data: session } = await supabase
                 .from('game_sessions')
-                .select('id, created_at, time_limit')
+                .select('id, created_at, time_limit, deadline_epoch')
                 .eq('room_id', roomId)
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .single();
 
             if (session) {
-                // Sync timer
-                const createdAt = new Date(session.created_at).getTime();
                 const timeLimit = session.time_limit || 300;
-                const calculatedDeadline = createdAt + timeLimit * 1000;
-                setDeadline(calculatedDeadline);
 
-                // Initial timer set
-                const now = Date.now();
-                const remaining = Math.max(0, Math.floor((calculatedDeadline - now) / 1000));
-                setTimer(remaining);
+                // Reset timer at question phase start (Option A)
+                // Check if deadline_epoch needs to be reset for question phase
+                const shouldResetTimer = !session.deadline_epoch ||
+                    (session.deadline_epoch < Date.now()); // If expired, reset
+
+                if (shouldResetTimer) {
+                    // Calculate new deadline from now
+                    const newDeadline = Date.now() + (timeLimit * 1000);
+
+                    // Update deadline_epoch in database
+                    await supabase
+                        .from('game_sessions')
+                        .update({ deadline_epoch: newDeadline })
+                        .eq('id', session.id);
+
+                    setDeadline(newDeadline);
+                    setTimer(timeLimit);
+                } else {
+                    // Use existing deadline_epoch
+                    setDeadline(session.deadline_epoch);
+                    const now = Date.now();
+                    const remaining = Math.max(0, Math.floor((session.deadline_epoch - now) / 1000));
+                    setTimer(remaining);
+                }
 
                 const { data } = await supabase
                     .from('questions')

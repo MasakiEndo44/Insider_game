@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react"
 import { useRouter } from "next/navigation"
 import { Users } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { useGame } from "@/context/game-context"
 import { useRoom } from "@/context/room-context"
 import { api } from '@/lib/api';
@@ -50,6 +51,7 @@ function DebatePhaseContent() {
     const { timer, setTimer, phase } = useGame()
     const { roomId, playerId, players } = useRoom()
     const isHost = players.find(p => p.id === playerId)?.isHost
+    const isMaster = players.find(p => p.id === playerId)?.isHost // Master can skip debate
     const [deadline, setDeadline] = useState<number | null>(null)
     const [initialTotal, setInitialTotal] = useState(300)
 
@@ -67,22 +69,31 @@ function DebatePhaseContent() {
         const syncTimer = async () => {
             const { data: session } = await supabase
                 .from('game_sessions')
-                .select('id, created_at, time_limit')
+                .select('id, created_at, time_limit, deadline_epoch')
                 .eq('room_id', roomId)
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .single();
 
             if (session) {
-                const createdAt = new Date(session.created_at).getTime();
                 const timeLimit = session.time_limit || 300;
-                const calculatedDeadline = createdAt + timeLimit * 1000;
-                setDeadline(calculatedDeadline);
                 setInitialTotal(timeLimit);
 
-                const now = Date.now();
-                const remaining = Math.max(0, Math.floor((calculatedDeadline - now) / 1000));
-                setTimer(remaining);
+                // Use deadline_epoch if available
+                if (session.deadline_epoch) {
+                    setDeadline(session.deadline_epoch);
+                    const now = Date.now();
+                    const remaining = Math.max(0, Math.floor((session.deadline_epoch - now) / 1000));
+                    setTimer(remaining);
+                } else {
+                    // Fallback to old calculation if deadline_epoch is not set
+                    const createdAt = new Date(session.created_at).getTime();
+                    const calculatedDeadline = createdAt + timeLimit * 1000;
+                    setDeadline(calculatedDeadline);
+                    const now = Date.now();
+                    const remaining = Math.max(0, Math.floor((calculatedDeadline - now) / 1000));
+                    setTimer(remaining);
+                }
             }
         };
 
@@ -107,15 +118,35 @@ function DebatePhaseContent() {
 
             if (remaining <= 0 && isHost) {
                 clearInterval(interval);
-                api.updatePhase(roomId!, 'VOTE1').catch(error => {
-                    console.error("Failed to update phase:", error);
-                    toast.error('フェーズの更新に失敗しました');
-                });
+                console.log('[DEBUG] Timer reached 0, transitioning to VOTE1');
+
+                api.updatePhase(roomId!, 'VOTE1')
+                    .then(() => {
+                        console.log('[DEBUG] Phase updated successfully, navigating...');
+                        router.push('/game/vote1');
+                    })
+                    .catch(error => {
+                        console.error("Failed to update phase:", error);
+                        toast.error('フェーズの更新に失敗しました。画面を更新してください。');
+                        // Fallback: force navigation anyway
+                        router.push('/game/vote1');
+                    });
             }
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [deadline, setTimer, isHost, roomId])
+    }, [deadline, setTimer, isHost, roomId, router])
+
+    // Skip debate (Master only)
+    const handleSkipDebate = async () => {
+        try {
+            await api.updatePhase(roomId!, 'VOTE1');
+            router.push('/game/vote1');
+        } catch (error) {
+            console.error("Failed to skip debate:", error);
+            toast.error('討論の終了に失敗しました');
+        }
+    };
 
     return (
         <div className="min-h-screen p-4 flex flex-col items-center" style={{ paddingTop: '64px' }}>
@@ -149,6 +180,20 @@ function DebatePhaseContent() {
                     <p className="text-sm text-foreground">時間終了後、自動的に投票フェーズに進みます</p>
                 </div>
             </div>
+
+            {/* Fixed Bottom Action (Master Only) */}
+            {isMaster && (
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t border-border flex justify-center">
+                    <div className="max-w-md w-full">
+                        <Button
+                            onClick={handleSkipDebate}
+                            className="w-full h-14 text-lg font-bold bg-transparent hover:bg-success/10 text-foreground border-2 border-foreground rounded-xl transition-all duration-200 hover:border-success hover:text-success"
+                        >
+                            討論を終了する
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
