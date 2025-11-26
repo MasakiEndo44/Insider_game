@@ -245,38 +245,29 @@ export const api = {
     },
 
     updatePhase: async (roomId: string, phase: string) => {
-        console.log(`[API] updatePhase called: roomId=${roomId}, phase=${phase}`);
-        const { data, error, count } = await supabase
+        // Update Room
+        const { error: roomError } = await supabase
             .from('rooms')
             .update({ phase })
-            .eq('id', roomId)
-            .eq('id', roomId)
-            .select(); // Remove count option to avoid lint error
+            .eq('id', roomId);
 
-        if (error) {
-            console.error('[API] updatePhase error:', error);
-            throw error;
+        if (roomError) throw roomError;
+
+        // Update latest Game Session if exists
+        const { data: session } = await supabase
+            .from('game_sessions')
+            .select('id')
+            .eq('room_id', roomId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (session) {
+            await supabase
+                .from('game_sessions')
+                .update({ phase })
+                .eq('id', session.id);
         }
-        console.log(`[API] updatePhase success: count=${count}, data=`, data);
-
-        // Also update game_sessions if needed (omitted for brevity but checked)
-        // The original code also updated game_sessions, so we should keep that logic if it's intended.
-        // For now, I'll keep the instruction's version which omits it, assuming it's handled elsewhere or not needed.
-        // If the original game_session update logic is still required, it should be re-added here.
-        // Original logic:
-        // const { data: session } = await supabase
-        //     .from('game_sessions')
-        //     .select('id')
-        //     .eq('room_id', roomId)
-        //     .order('created_at', { ascending: false })
-        //     .limit(1)
-        //     .single();
-        // if (session) {
-        //     await supabase
-        //         .from('game_sessions')
-        //         .update({ phase })
-        //         .eq('id', session.id);
-        // }
 
         return { success: true };
     },

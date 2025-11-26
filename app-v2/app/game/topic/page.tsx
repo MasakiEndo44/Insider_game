@@ -26,7 +26,6 @@ function TopicContent() {
     const isInsider = role === 'insider'
     const isMaster = role === 'master'
     const canConfirm = isHost && (!isInsider || !topicVisible)
-    console.log(`[TopicPage] Render: playerId=${playerId}, hostId=${hostId}, isHost=${isHost}, role=${role}, topicVisible=${topicVisible}, canConfirm=${canConfirm}`);
 
     useEffect(() => {
         if (!roomId || !playerId) {
@@ -61,13 +60,10 @@ function TopicContent() {
     }, [isInsider])
 
     const handleConfirm = async () => {
-        console.log(`[TopicPage] handleConfirm called. isHost=${isHost}, roomId=${roomId}`);
         if (!isHost || !roomId) return
         setConfirmed(true)
         try {
-            console.log('[TopicPage] Calling api.updatePhase...');
             await api.updatePhase(roomId, 'QUESTION')
-            console.log('[TopicPage] api.updatePhase completed');
         } catch (error) {
             console.error('Failed to update phase:', error)
             setConfirmed(false)

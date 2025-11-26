@@ -31,20 +31,6 @@ test.describe('Basic Game Flow', () => {
         const passphrase = generateUniquePassphrase('basic-flow');
 
         try {
-            // Enable console logging
-            page1.on('console', msg => console.log('[Page1] ' + msg.text()));
-            page2.on('console', msg => console.log('[Page2] ' + msg.text()));
-            page3.on('console', msg => console.log('[Page3] ' + msg.text()));
-
-            // Log failed requests and 406 responses
-            const logRequestFail = (name: string, req: any) => console.log(`[${name}] Request failed: ${req.url()} - ${req.failure()?.errorText}`);
-            const log406 = (name: string, res: any) => {
-                if (res.status() === 406) console.log(`[${name}] 406 Response: ${res.url()}`);
-            };
-
-            page1.on('requestfailed', req => logRequestFail('Page1', req));
-            page1.on('response', res => log406('Page1', res));
-
             // Step 1: Create room and join
             console.log('=== Step 1: Creating room and joining ===');
             await createRoom(page1, passphrase, 'Player1');
@@ -91,31 +77,16 @@ test.describe('Basic Game Flow', () => {
             // Wait for navigation after role confirmation
             await page1.waitForTimeout(2000); // Give time for navigation to start
 
-            // Step 4: Topic Phase (if exists)
-            console.log('=== Step 4: Topic Phase (if exists) ===');
-            // Check if we're in TOPIC phase
+            // Step 4: Topic Phase
+            console.log('=== Step 4: Topic Phase ===');
             const currentUrl = page1.url();
-            console.log(`Current URL: ${currentUrl}`);
             if (currentUrl.includes('/game/topic')) {
-                console.log('=== In TOPIC phase, confirming ===');
                 await waitForAllPlayersInPhase([page1, page2, page3], 'TOPIC', 20000);
 
-                // Debug: Check all buttons on the page
-                const allButtons = await page1.locator('button').all();
-                console.log(`Found ${allButtons.length} buttons on page`);
-                for (let i = 0; i < Math.min(allButtons.length, 5); i++) {
-                    const text = await allButtons[i].textContent();
-                    const isEnabled = await allButtons[i].isEnabled();
-                    console.log(`Button ${i}: "${text}" (enabled: ${isEnabled})`);
-                }
-
-                // Wait for host's confirm button to be enabled (handles Insider's timer automatically)
+                // Wait for host's confirm button to be enabled (handles Insider's 10-second timer)
                 const hostConfirmBtn = page1.getByRole('button', { name: '確認しました' });
-                console.log('Waiting for confirm button to be enabled...');
                 await expect(hostConfirmBtn).toBeEnabled({ timeout: 15000 });
-                console.log('Confirm button is enabled, clicking...');
                 await hostConfirmBtn.click();
-                console.log('Confirm button clicked');
             }
 
             // Step 5: Question Phase
@@ -123,7 +94,7 @@ test.describe('Basic Game Flow', () => {
             await waitForAllPlayersInPhase([page1, page2, page3], 'QUESTION', 20000);
 
             // Verify timer is visible
-            await expect(page1.locator('text=/\d+:\d+/')).toBeVisible();
+            await expect(page1.locator('text=/\\d+:\\d+/')).toBeVisible({ timeout: 10000 });
 
             // Find master page
             const masterPage = await findMasterPage(pages);
