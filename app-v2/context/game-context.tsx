@@ -103,9 +103,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
                     filter: `id=eq.${roomId}`
                 },
                 (payload) => {
-                    const newPhase = payload.new.phase as GamePhase;
-                    if (newPhase) {
-                        setState(prev => ({ ...prev, phase: newPhase }));
+                    console.log('[GameContext] Realtime UPDATE rooms:', payload);
+                    const newRoom = payload.new as any // Cast to any to avoid import issues for debug
+                    if (newRoom.phase !== state.phase) {
+                        console.log(`[GameContext] Phase change detected: ${state.phase} -> ${newRoom.phase}`);
+                        setState((prev) => ({ ...prev, phase: newRoom.phase }))
+                        router.push(`/game/${newRoom.phase.toLowerCase().replace('_', '-')}`)
                     }
                 }
             )

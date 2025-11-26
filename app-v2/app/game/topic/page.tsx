@@ -23,6 +23,10 @@ function TopicContent() {
     const [topicVisible, setTopicVisible] = useState(true)
 
     const isHost = hostId === playerId
+    const isInsider = role === 'insider'
+    const isMaster = role === 'master'
+    const canConfirm = isHost && (!isInsider || !topicVisible)
+    console.log(`[TopicPage] Render: playerId=${playerId}, hostId=${hostId}, isHost=${isHost}, role=${role}, topicVisible=${topicVisible}, canConfirm=${canConfirm}`);
 
     useEffect(() => {
         if (!roomId || !playerId) {
@@ -40,7 +44,7 @@ function TopicContent() {
 
     useEffect(() => {
         // インサイダーの場合、10秒後にお題を非表示
-        if (role === "insider") {
+        if (isInsider) {
             const timer = setInterval(() => {
                 setInsiderTimer((prev) => {
                     if (prev <= 1) {
@@ -54,17 +58,19 @@ function TopicContent() {
 
             return () => clearInterval(timer)
         }
-    }, [role])
+    }, [isInsider])
 
     const handleConfirm = async () => {
+        console.log(`[TopicPage] handleConfirm called. isHost=${isHost}, roomId=${roomId}`);
+        if (!isHost || !roomId) return
         setConfirmed(true)
-        if (isHost) {
-            try {
-                await api.updatePhase(roomId!, 'QUESTION');
-            } catch (error) {
-                console.error("Failed to update phase:", error)
-                setConfirmed(false)
-            }
+        try {
+            console.log('[TopicPage] Calling api.updatePhase...');
+            await api.updatePhase(roomId, 'QUESTION')
+            console.log('[TopicPage] api.updatePhase completed');
+        } catch (error) {
+            console.error('Failed to update phase:', error)
+            setConfirmed(false)
         }
     }
 
@@ -111,8 +117,6 @@ function TopicContent() {
     }
 
     // マスター・インサイダーの場合
-    const isMaster = role === "master"
-    const isInsider = role === "insider"
     const roleColor = isMaster ? "#3B82F6" : "#E50012"
     const roleIcon = isMaster ? "/images/master-icon.png" : "/images/insider-mark.png"
 
