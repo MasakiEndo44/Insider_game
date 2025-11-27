@@ -277,17 +277,28 @@ export function GameProvider({ children }: { children: ReactNode }) {
                         }
                     }
                 } else {
-                    // Fetch only my role
-                    const { data: roleData } = await supabase
-                        .from('roles')
-                        .select('*')
-                        .eq('player_id', playerId)
+                    // Fetch ALL roles for the current session
+                    const { data: session } = await supabase
+                        .from('game_sessions')
+                        .select('id')
+                        .eq('room_id', roomId)
                         .order('created_at', { ascending: false })
                         .limit(1)
                         .single();
 
-                    if (roleData) {
-                        setRoles({ [playerId]: roleData.role as Role });
+                    if (session) {
+                        const { data: allRoles } = await supabase
+                            .from('roles')
+                            .select('*')
+                            .eq('session_id', session.id);
+
+                        if (allRoles) {
+                            const rolesMap: Record<string, Role> = {};
+                            allRoles.forEach(r => {
+                                rolesMap[r.player_id] = r.role as Role;
+                            });
+                            setRoles(rolesMap);
+                        }
                     }
                 }
             };

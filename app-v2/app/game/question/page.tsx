@@ -52,7 +52,7 @@ function TimerRing({ remaining, total, size = 200 }: { remaining: number; total:
 function QuestionPhaseContent() {
     const router = useRouter()
     const { roles, topic, timer, setTimer, setPhase, setOutcome, phase } = useGame()
-    const { playerId, roomId } = useRoom()
+    const { playerId, roomId, players } = useRoom()
 
     const assignedRole = playerId && roles[playerId] ? roles[playerId] : null
     const role = assignedRole?.toLowerCase() || "common"
@@ -211,6 +211,32 @@ function QuestionPhaseContent() {
             toast.error('回答の送信に失敗しました')
         }
     }
+    const [showAnswererModal, setShowAnswererModal] = useState(false)
+    const [selectedAnswerer, setSelectedAnswerer] = useState<string | null>(null)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+
+    // Filter potential answerers (exclude Master)
+    const potentialAnswerers = players.filter(p => roles[p.id] !== 'MASTER')
+
+    const handleCorrectAnswerClick = () => {
+        setShowAnswererModal(true)
+    }
+
+    const handleConfirmAnswerer = async () => {
+        if (!selectedAnswerer || !roomId || isSubmitting) {
+            return;
+        }
+
+        setIsSubmitting(true)
+        try {
+            await api.resolveQuestionPhase(roomId, selectedAnswerer)
+            setShowAnswererModal(false)
+        } catch (error) {
+            console.error("Failed to resolve question phase:", error)
+            toast.error('正解者の登録に失敗しました')
+            setIsSubmitting(false)
+        }
+    }
 
     if (!assignedRole) return null
 
@@ -270,11 +296,59 @@ function QuestionPhaseContent() {
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t border-border flex justify-center">
                     <div className="max-w-md w-full">
                         <Button
-                            onClick={handleCorrectAnswer}
+                            onClick={handleCorrectAnswerClick}
                             className="w-full h-14 text-lg font-bold bg-transparent hover:bg-success/10 text-foreground border-2 border-foreground rounded-xl transition-all duration-200 hover:border-success hover:text-success"
                         >
                             正解が出ました
                         </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Answerer Selection Modal */}
+            {showAnswererModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-background border border-border rounded-2xl p-6 max-w-sm w-full space-y-6 animate-in fade-in zoom-in duration-200">
+                        <div className="text-center space-y-2">
+                            <h2 className="text-xl font-black">正解者を選択</h2>
+                            <p className="text-sm text-foreground-secondary">誰がお題を当てましたか？</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 max-h-[60vh] overflow-y-auto">
+                            {potentialAnswerers.map(player => (
+                                <button
+                                    key={player.id}
+                                    onClick={() => setSelectedAnswerer(player.id)}
+                                    className={`p-4 rounded-xl border-2 transition-all text-left flex items-center justify-between ${selectedAnswerer === player.id
+                                        ? 'border-success bg-success/10 text-success'
+                                        : 'border-border hover:border-foreground/50 text-foreground'
+                                        }`}
+                                >
+                                    <span className="font-bold">{player.nickname}</span>
+                                    {selectedAnswerer === player.id && (
+                                        <div className="w-4 h-4 rounded-full bg-success" />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex gap-3">
+                            <Button
+                                variant="outline"
+                                className="flex-1"
+                                onClick={() => setShowAnswererModal(false)}
+                                disabled={isSubmitting}
+                            >
+                                キャンセル
+                            </Button>
+                            <Button
+                                className="flex-1 bg-success hover:bg-success/90 text-white"
+                                onClick={handleConfirmAnswerer}
+                                disabled={!selectedAnswerer || isSubmitting}
+                            >
+                                {isSubmitting ? '送信中...' : '決定'}
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}

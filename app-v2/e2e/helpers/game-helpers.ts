@@ -105,8 +105,8 @@ export async function waitForPhase(
  */
 export async function getPlayerRole(page: Page): Promise<'MASTER' | 'INSIDER' | 'CITIZEN'> {
     // 役職配布フェーズで役職テキストを取得
-    await page.waitForSelector('text=あなたは', { timeout: 15000 });
-    const roleText = await page.locator('text=/あなたは.*です/').textContent();
+    await page.waitForSelector('h1', { timeout: 15000 });
+    const roleText = await page.locator('h1').textContent();
 
     if (!roleText) {
         throw new Error('Role text not found');
@@ -174,8 +174,8 @@ export async function submitVote1(
     const buttonName = vote === 'yes' ? 'はい' : 'いいえ';
     await page.getByRole('button', { name: buttonName }).click();
 
-    // 投票完了を待機（ボタンが無効化される）
-    await expect(page.getByRole('button', { name: buttonName })).toBeDisabled({ timeout: 5000 });
+    // 投票完了を待機（「投票しました」と表示される）
+    await expect(page.getByText('投票しました')).toBeVisible({ timeout: 5000 });
 }
 
 /**
@@ -257,6 +257,17 @@ export async function confirmRole(page: Page): Promise<void> {
  */
 export async function reportCorrectAnswer(page: Page): Promise<void> {
     await page.getByRole('button', { name: '正解が出ました' }).click();
+
+    // 正解者選択モーダルが表示されるのを待つ
+    await page.waitForSelector('text=正解者を選択');
+
+    // 最初の候補者を選択（自分以外）
+    // モーダル内のボタンを取得（キャンセルと決定以外）
+    const playerButtons = page.locator('div.grid > button');
+    await playerButtons.first().click();
+
+    // 決定ボタンをクリック
+    await page.getByRole('button', { name: '決定' }).click();
 
     // 討論フェーズに遷移するまで待機
     await waitForPhase(page, 'DEBATE', 15000);

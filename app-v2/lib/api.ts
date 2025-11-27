@@ -158,45 +158,29 @@ export const api = {
     },
 
     startGame: async (roomId: string, category: string = '全般', timeLimit: number = 300) => {
-        // Calculate deadline_epoch for timer synchronization
-        const startTime = Date.now();
-        const deadlineEpoch = startTime + (timeLimit * 1000);
-
-        // 1. Create Game Session
-        const { data: session, error: sessionError } = await supabase
-            .from('game_sessions')
-            .insert({
-                room_id: roomId,
-                time_limit: timeLimit,
-                category,
-                phase: 'DEAL',
-                start_time: new Date(startTime).toISOString(),
-                deadline_epoch: deadlineEpoch
-            })
-            .select()
-            .single();
+        // 1. Create Game Session atomically using RPC
+        const { data: sessionId, error: sessionError } = await supabase
+            .rpc('start_game_session', {
+                p_room_id: roomId,
+                p_category: category,
+                p_time_limit: timeLimit
+            });
 
         if (sessionError) throw sessionError;
 
         // 2. Assign Roles (Edge Function)
         const { error: assignError } = await supabase.functions.invoke('assign-roles', {
-            body: { session_id: session.id, room_id: roomId }
+            body: { session_id: sessionId, room_id: roomId }
         });
 
         if (assignError) throw assignError;
 
         // 3. Select Topic (Edge Function)
         const { error: topicError } = await supabase.functions.invoke('select-topic', {
-            body: { session_id: session.id, category: category || '全般' }
+            body: { session_id: sessionId, category: category || '全般' }
         });
 
         if (topicError) throw topicError;
-
-        // 4. Update Room Phase
-        await supabase
-            .from('rooms')
-            .update({ phase: 'ROLE_ASSIGNMENT' })
-            .eq('id', roomId);
 
         return { success: true };
     },
@@ -273,13 +257,55 @@ export const api = {
     },
 
     leaveRoom: async (roomId: string, playerId: string) => {
-        const { error } = await supabase
+        // 1. Get current room and player info
+        const { data: room } = await supabase
+            .from('rooms')
+            .select('host_id')
+            .eq('id', roomId)
+            .single();
+
+        const isHost = room?.host_id === playerId;
+
+        // 2. Mark player as disconnected
+        await supabase
             .from('players')
             .update({ is_connected: false })
             .eq('id', playerId)
             .eq('room_id', roomId);
 
-        if (error) throw error;
+        // 3. If host is leaving, delegate to next player
+        if (isHost) {
+            const { data: nextPlayer } = await supabase
+                .from('players')
+                .select('id')
+                .eq('room_id', roomId)
+                .eq('is_connected', true)
+                .neq('id', playerId)
+                .order('created_at', { ascending: true })
+                .limit(1)
+                .single();
+
+            if (nextPlayer) {
+                // Update room host
+                await supabase
+                    .from('rooms')
+                    .update({ host_id: nextPlayer.id })
+                    .eq('id', roomId);
+
+                // Update new host's isHost flag
+                await supabase
+                    .from('players')
+                    .update({ is_host: true })
+                    .eq('id', nextPlayer.id);
+
+                // Update old host's isHost flag
+                await supabase
+                    .from('players')
+                    .update({ is_host: false })
+                    .eq('id', playerId);
+            }
+        }
+
         return { success: true };
     },
 
@@ -313,8 +339,44 @@ export const api = {
             .from('questions')
             .update({ answer })
             .eq('id', questionId);
-
         if (error) throw error;
+        return { success: true };
+    },
+
+    resolveQuestionPhase: async (roomId: string, answererId: string) => {
+        // 1. Get latest session
+        const { data: session, error: sessionError } = await supabase
+            .from('game_sessions')
+            .select('id')
+            .eq('room_id', roomId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (sessionError) throw sessionError;
+
+        // 2. Set answerer_id
+        const { error: updateError } = await supabase
+            .from('game_sessions')
+            .update({ answerer_id: answererId })
+            .eq('id', session.id);
+
+        if (updateError) throw updateError;
+
+        // 3. Update phase to DEBATE
+        const { error: phaseError } = await supabase
+            .from('rooms')
+            .update({ phase: 'DEBATE' })
+            .eq('id', roomId);
+
+        if (phaseError) throw phaseError;
+
+        // Also update session phase
+        await supabase
+            .from('game_sessions')
+            .update({ phase: 'DEBATE' })
+            .eq('id', session.id);
+
         return { success: true };
     }
 };

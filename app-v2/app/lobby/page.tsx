@@ -57,7 +57,7 @@ function LobbyContent() {
             await api.startGame(roomId, category, timeLimit * 60)
             // Navigation handled by useEffect on phase change
         } catch (error) {
-            console.error("Failed to start game:", error)
+            console.error(error)
             toast.error('ゲームの開始に失敗しました')
             setIsStarting(false)
         }

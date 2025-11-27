@@ -62,7 +62,6 @@ test.describe('Basic Game Flow', () => {
             const p1Role = await getPlayerRole(page1);
             const p2Role = await getPlayerRole(page2);
             const p3Role = await getPlayerRole(page3);
-            console.log('Roles: P1=' + p1Role + ', P2=' + p2Role + ', P3=' + p3Role);
 
             // Confirm roles (if button exists)
             const pages = [page1, page2, page3];
@@ -138,11 +137,15 @@ test.describe('Basic Game Flow', () => {
             console.log('=== Step 8: Vote 2 Phase ===');
             await waitForAllPlayersInPhase([page1, page2, page3], 'VOTE2', 20000);
 
-            // Each player votes for Player1 (arbitrary choice)
-            await expect(page1.getByRole('button', { name: 'Player1' })).toBeVisible({ timeout: 10000 });
-            await submitVote2(page1, 'Player1');
-            await submitVote2(page2, 'Player1');
-            await submitVote2(page3, 'Player1');
+            // Determine a target to vote for (anyone who is not Master)
+            let voteTarget = 'Player1';
+            if (p1Role === 'MASTER') voteTarget = 'Player2';
+
+            // Each player votes for voteTarget
+            await expect(page1.getByRole('button', { name: voteTarget })).toBeVisible({ timeout: 10000 });
+            await submitVote2(page1, voteTarget);
+            await submitVote2(page2, voteTarget);
+            await submitVote2(page3, voteTarget);
 
             // Wait for vote processing
             await waitForRealtimeSync(3000);

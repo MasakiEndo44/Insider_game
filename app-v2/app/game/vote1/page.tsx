@@ -50,8 +50,8 @@ function Vote1Content() {
                     setAnswererRole(role);
 
                     // If answerer is MASTER, skip vote1
-                    if (role === 'MASTER') {
-                        console.log('[DEBUG] Answerer is MASTER, skipping vote1');
+                    // Add defensive check to ensure role is defined
+                    if (role && role === 'MASTER') {
                         await api.updatePhase(roomId, 'VOTE2');
                         router.push('/game/vote2');
                         return;

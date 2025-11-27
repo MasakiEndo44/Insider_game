@@ -30,6 +30,37 @@ serve(async (req) => {
             throw new Error('Insufficient players or error fetching players');
         }
 
+        // Check if roles already assigned
+        const { count } = await supabase
+            .from('roles')
+            .select('*', { count: 'exact', head: true })
+            .eq('session_id', session_id);
+
+        if (count && count > 0) {
+            console.log('Roles already assigned for session:', session_id);
+            return new Response(
+                JSON.stringify({ message: 'Roles already assigned' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
+        // Check if this is the latest session for the room
+        const { data: latestSession } = await supabase
+            .from('game_sessions')
+            .select('id')
+            .eq('room_id', room_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (latestSession && latestSession.id !== session_id) {
+            console.log('Not the latest session, aborting assignment. Current:', session_id, 'Latest:', latestSession.id);
+            return new Response(
+                JSON.stringify({ message: 'Not the latest session' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
         // 2. Shuffle players
         const shuffled = [...players].sort(() => Math.random() - 0.5);
 
@@ -51,7 +82,9 @@ serve(async (req) => {
             throw insertError;
         }
 
-        // 5. Update game_sessions with answerer_id (Master)
+        // 5. Update game_sessions with answerer_id (Master) - REMOVED
+        // We don't set answerer_id initially. It will be set when Master selects the winner.
+        /*
         const { error: updateError } = await supabase
             .from('game_sessions')
             .update({ answerer_id: master.id })
@@ -60,6 +93,7 @@ serve(async (req) => {
         if (updateError) {
             throw updateError;
         }
+        */
 
         return new Response(JSON.stringify({ success: true, count: roles.length }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
