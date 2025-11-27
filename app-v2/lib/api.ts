@@ -158,7 +158,7 @@ export const api = {
     },
 
     startGame: async (roomId: string, category: string = '全般', timeLimit: number = 300) => {
-        // 1. Create Game Session atomically using RPC
+        // 1. Create Game Session AND Assign Roles atomically using RPC
         const { data: sessionId, error: sessionError } = await supabase
             .rpc('start_game_session', {
                 p_room_id: roomId,
@@ -168,14 +168,7 @@ export const api = {
 
         if (sessionError) throw sessionError;
 
-        // 2. Assign Roles (Edge Function)
-        const { error: assignError } = await supabase.functions.invoke('assign-roles', {
-            body: { session_id: sessionId, room_id: roomId }
-        });
-
-        if (assignError) throw assignError;
-
-        // 3. Select Topic (Edge Function)
+        // 2. Select Topic (Edge Function)
         const { error: topicError } = await supabase.functions.invoke('select-topic', {
             body: { session_id: sessionId, category: category || '全般' }
         });
