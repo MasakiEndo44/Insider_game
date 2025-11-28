@@ -277,8 +277,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
                         }
                     }
                 } else {
-                    // Fetch ALL roles for the current session
-                    const { data: session } = await supabase
+                    // Fetch only MY role (RLS only allows seeing own role during non-RESULT phases)
+                    const { data: session, error: sessionError } = await supabase
                         .from('game_sessions')
                         .select('id')
                         .eq('room_id', roomId)
@@ -286,18 +286,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
                         .limit(1)
                         .single();
 
+                    if (sessionError) console.error('[GameContext] Session fetch error:', sessionError);
                     if (session) {
-                        const { data: allRoles } = await supabase
+                        const { data: myRole, error: roleError } = await supabase
                             .from('roles')
                             .select('*')
-                            .eq('session_id', session.id);
+                            .eq('session_id', session.id)
+                            .eq('player_id', playerId)
+                            .single();
 
-                        if (allRoles) {
-                            const rolesMap: Record<string, Role> = {};
-                            allRoles.forEach(r => {
-                                rolesMap[r.player_id] = r.role as Role;
-                            });
-                            setRoles(rolesMap);
+                        if (roleError) console.error('[GameContext] Role fetch error:', roleError);
+                        if (myRole) {
+                            setRoles({ [playerId]: myRole.role as Role });
                         }
                     }
                 }

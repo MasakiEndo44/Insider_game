@@ -1,160 +1,133 @@
 import { supabase, signInAnonymously } from '@/lib/supabase/client';
 import { APIError, ERROR_MESSAGES } from '@/lib/errors';
+import { Player } from '@/context/room-context';
+
+// Helper for retrying operations with exponential backoff
+async function retryOperation<T>(operation: () => Promise<T>, maxRetries = 3, baseDelay = 1000): Promise<T> {
+    let lastError: any;
+
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await operation();
+        } catch (error: any) {
+            lastError = error;
+
+            // Only retry on 429 or network errors
+            const isRateLimit = error?.status === 429 ||
+                error?.message?.includes('429') ||
+                error?.message?.includes('Too Many Requests');
+            const isNetworkError = error?.message === 'Failed to fetch' || error?.status === 0;
+
+            if (!isRateLimit && !isNetworkError) {
+                throw error;
+            }
+
+            // Exponential backoff with jitter
+            const delay = baseDelay * Math.pow(2, i) + Math.random() * 1000;
+            console.log(`Retry ${i + 1}/${maxRetries} after ${Math.round(delay)}ms due to error:`, error.message || error.status);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+
+    throw lastError;
+}
 
 export const api = {
     createRoom: async (passphrase: string, nickname: string) => {
-        try {
-            // 1. Ensure Auth
-            const { data: session } = await supabase.auth.getSession();
-            let userId = session.session?.user?.id;
-            if (!userId) {
-                const authData = await signInAnonymously();
-                userId = authData.user?.id;
-            }
-
-            if (!userId) throw new APIError(ERROR_MESSAGES.SESSION_EXPIRED, 'AUTH_FAILED', 401);
-
-            // 2. Check for existing room with same passphrase
-            const { data: existingRoom } = await supabase
-                .from('rooms')
-                .select('id, updated_at')
-                .eq('passphrase_hash', passphrase)
-                .single();
-
-            if (existingRoom) {
-                // Check if room is expired (older than 2 hours)
-                const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-                const isExpired = existingRoom.updated_at && existingRoom.updated_at < twoHoursAgo;
-
-                // Count active players
-                const { count } = await supabase
-                    .from('players')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('room_id', existingRoom.id)
-                    .eq('is_connected', true);
-
-                if (count === 0 || isExpired) {
-                    // Delete the old room (CASCADE will handle related records)
-                    await supabase
-                        .from('rooms')
-                        .delete()
-                        .eq('id', existingRoom.id);
-                } else {
-                    throw new APIError(ERROR_MESSAGES.DUPLICATE_ROOM, 'DUPLICATE_ROOM', 409);
+        return retryOperation(async () => {
+            try {
+                // 1. Ensure Auth
+                const { data: session } = await supabase.auth.getSession();
+                let userId = session.session?.user?.id;
+                if (!userId) {
+                    const authData = await signInAnonymously();
+                    userId = authData.user?.id;
                 }
-            }
 
-            // 3. Create Room
-            const { data: room, error: roomError } = await supabase
-                .from('rooms')
-                .insert({
-                    passphrase_hash: passphrase,
-                    phase: 'LOBBY'
-                })
-                .select()
-                .single();
+                if (!userId) throw new APIError(ERROR_MESSAGES.SESSION_EXPIRED, 'AUTH_FAILED', 401);
 
-            if (roomError) {
-                if (roomError.code === '23505') {
-                    throw new APIError(ERROR_MESSAGES.DUPLICATE_ROOM, 'DUPLICATE_ROOM', 409);
+                // 2. Call Atomic RPC
+                const { data, error } = await supabase
+                    .rpc('create_room_with_host', {
+                        p_passphrase_hash: passphrase,
+                        p_nickname: nickname,
+                        p_user_id: userId
+                    });
+
+                if (error) {
+                    if (error.message.includes('DUPLICATE_ROOM')) {
+                        throw new APIError(ERROR_MESSAGES.DUPLICATE_ROOM, 'DUPLICATE_ROOM', 409);
+                    }
+                    // Propagate 429s to trigger retry
+                    if (error.code === '429' || error.message?.includes('429')) {
+                        throw { status: 429, message: 'Too Many Requests' };
+                    }
+                    throw new APIError(error.message, 'DB_ERROR', 500);
                 }
-                throw new APIError(roomError.message, 'DB_ERROR', 500);
-            }
 
-            // 4. Create Player (Host)
-            const { data: player, error: playerError } = await supabase
-                .from('players')
-                .insert({
-                    room_id: room.id,
-                    nickname,
-                    is_host: true,
-                    is_ready: true,
-                    is_connected: true,
-                    user_id: userId
-                })
-                .select()
-                .single();
+                return data as { roomId: string, player: Player };
+            } catch (error) {
+                if (error instanceof APIError) throw error;
+                // Pass through objects that look like rate limit errors
+                if ((error as any)?.status === 429) throw error;
 
-            if (playerError) {
-                if (playerError.code === '23505') {
-                    throw new APIError(ERROR_MESSAGES.DUPLICATE_NICKNAME, 'DUPLICATE_NICKNAME', 409);
+                if (!navigator.onLine) {
+                    throw new APIError(ERROR_MESSAGES.NETWORK_ERROR, 'NETWORK_ERROR', 0);
                 }
-                throw new APIError(playerError.message, 'DB_ERROR', 500);
+
+                throw new APIError(ERROR_MESSAGES.UNKNOWN_ERROR, 'UNKNOWN', 500);
             }
-
-            // 5. Update Room host_id
-            await supabase
-                .from('rooms')
-                .update({ host_id: player.id })
-                .eq('id', room.id);
-
-            return { roomId: room.id, player: { ...player, isHost: player.is_host, isReady: player.is_ready, isConnected: player.is_connected } };
-        } catch (error) {
-            if (error instanceof APIError) throw error;
-
-            if (!navigator.onLine) {
-                throw new APIError(ERROR_MESSAGES.NETWORK_ERROR, 'NETWORK_ERROR', 0);
-            }
-
-            throw new APIError(ERROR_MESSAGES.UNKNOWN_ERROR, 'UNKNOWN', 500);
-        }
+        });
     },
 
 
     joinRoom: async (passphrase: string, nickname: string) => {
-        try {
-            // 1. Ensure Auth
-            const { data: session } = await supabase.auth.getSession();
-            let userId = session.session?.user?.id;
-            if (!userId) {
-                const authData = await signInAnonymously();
-                userId = authData.user?.id;
-            }
-
-            if (!userId) throw new APIError(ERROR_MESSAGES.SESSION_EXPIRED, 'AUTH_FAILED', 401);
-
-            // 2. Find Room
-            const { data: room, error: roomError } = await supabase
-                .from('rooms')
-                .select()
-                .eq('passphrase_hash', passphrase)
-                .single();
-
-            if (roomError || !room) {
-                throw new APIError(ERROR_MESSAGES.ROOM_NOT_FOUND, 'ROOM_NOT_FOUND', 404);
-            }
-
-            // 3. Create Player
-            const { data: player, error: playerError } = await supabase
-                .from('players')
-                .insert({
-                    room_id: room.id,
-                    nickname,
-                    is_host: false,
-                    is_ready: true,
-                    is_connected: true,
-                    user_id: userId
-                })
-                .select()
-                .single();
-
-            if (playerError) {
-                if (playerError.code === '23505') {
-                    throw new APIError(ERROR_MESSAGES.DUPLICATE_NICKNAME, 'DUPLICATE_NICKNAME', 409);
+        return retryOperation(async () => {
+            try {
+                // 1. Ensure Auth
+                const { data: session } = await supabase.auth.getSession();
+                let userId = session.session?.user?.id;
+                if (!userId) {
+                    const authData = await signInAnonymously();
+                    userId = authData.user?.id;
                 }
-                throw new APIError(playerError.message, 'DB_ERROR', 500);
+
+                if (!userId) throw new APIError(ERROR_MESSAGES.SESSION_EXPIRED, 'AUTH_FAILED', 401);
+
+                // 2. Call Atomic RPC
+                const { data, error } = await supabase
+                    .rpc('join_room', {
+                        p_passphrase_hash: passphrase,
+                        p_nickname: nickname,
+                        p_user_id: userId
+                    });
+
+                if (error) {
+                    if (error.message.includes('ROOM_NOT_FOUND')) {
+                        throw new APIError(ERROR_MESSAGES.ROOM_NOT_FOUND, 'ROOM_NOT_FOUND', 404);
+                    }
+                    if (error.message.includes('DUPLICATE_NICKNAME') || error.code === '23505') {
+                        throw new APIError(ERROR_MESSAGES.DUPLICATE_NICKNAME, 'DUPLICATE_NICKNAME', 409);
+                    }
+                    // Propagate 429s to trigger retry
+                    if (error.code === '429' || error.message?.includes('429')) {
+                        throw { status: 429, message: 'Too Many Requests' };
+                    }
+                    throw new APIError(error.message, 'DB_ERROR', 500);
+                }
+
+                return data as { roomId: string, player: Player };
+            } catch (error) {
+                if (error instanceof APIError) throw error;
+                if ((error as any)?.status === 429) throw error;
+
+                if (!navigator.onLine) {
+                    throw new APIError(ERROR_MESSAGES.NETWORK_ERROR, 'NETWORK_ERROR', 0);
+                }
+
+                throw new APIError(ERROR_MESSAGES.UNKNOWN_ERROR, 'UNKNOWN', 500);
             }
-
-            return { roomId: room.id, player: { ...player, isHost: player.is_host, isReady: player.is_ready, isConnected: player.is_connected } };
-        } catch (error) {
-            if (error instanceof APIError) throw error;
-
-            if (!navigator.onLine) {
-                throw new APIError(ERROR_MESSAGES.NETWORK_ERROR, 'NETWORK_ERROR', 0);
-            }
-
-            throw new APIError(ERROR_MESSAGES.UNKNOWN_ERROR, 'UNKNOWN', 500);
-        }
+        });
     },
 
     startGame: async (roomId: string, category: string = '全般', timeLimit: number = 300) => {

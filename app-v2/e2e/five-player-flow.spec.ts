@@ -24,6 +24,11 @@ test.describe('5-Player Game Flow', () => {
         const pages = await Promise.all(contexts.map(c => c.newPage()));
         const [page1, page2, page3, page4, page5] = pages;
 
+        // Capture console logs from all pages
+        pages.forEach((page, index) => {
+            page.on('console', msg => console.log(`[Player${index + 1} Console]: ${msg.text()}`));
+        });
+
         const passphrase = generateUniquePassphrase('5p-test');
 
         try {
@@ -33,12 +38,15 @@ test.describe('5-Player Game Flow', () => {
             await createRoom(page1, passphrase, 'Player1');
 
             // Players 2-5 join
-            await Promise.all([
-                joinRoom(page2, passphrase, 'Player2'),
-                joinRoom(page3, passphrase, 'Player3'),
-                joinRoom(page4, passphrase, 'Player4'),
-                joinRoom(page5, passphrase, 'Player5'),
-            ]);
+            // Join other players
+            await joinRoom(page2, passphrase, 'Player2');
+            await page2.waitForTimeout(3000); // Add delay to avoid rate limiting
+            await joinRoom(page3, passphrase, 'Player3');
+            await page3.waitForTimeout(3000);
+            await joinRoom(page4, passphrase, 'Player4');
+            await page4.waitForTimeout(3000);
+            await joinRoom(page5, passphrase, 'Player5');
+            await page5.waitForTimeout(3000);
 
             await waitForRealtimeSync(5000); // Increased wait time for 5 players
 
