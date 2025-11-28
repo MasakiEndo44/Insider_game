@@ -24,11 +24,6 @@ test.describe('5-Player Game Flow', () => {
         const pages = await Promise.all(contexts.map(c => c.newPage()));
         const [page1, page2, page3, page4, page5] = pages;
 
-        // Capture console logs from all pages
-        pages.forEach((page, index) => {
-            page.on('console', msg => console.log(`[Player${index + 1} Console]: ${msg.text()}`));
-        });
-
         const passphrase = generateUniquePassphrase('5p-test');
 
         try {

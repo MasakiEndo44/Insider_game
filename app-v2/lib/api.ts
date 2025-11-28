@@ -194,6 +194,15 @@ export const api = {
         return { success: true };
     },
 
+    async confirmRole(roomId: string, playerId: string) {
+        const { error } = await supabase.rpc('confirm_role_and_check_phase', {
+            p_room_id: roomId,
+            p_player_id: playerId
+        });
+
+        if (error) throw error;
+    },
+
     updatePhase: async (roomId: string, phase: string) => {
         // Update Room
         const { error: roomError } = await supabase

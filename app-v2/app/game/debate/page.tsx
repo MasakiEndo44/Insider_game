@@ -113,7 +113,7 @@ function DebatePhaseContent() {
 
         const interval = setInterval(() => {
             const now = Date.now();
-            const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
+            const remaining = Math.max(0, Math.ceil((deadline - now) / 1000));
             setTimer(remaining);
 
             if (remaining <= 0 && isHost) {
@@ -132,7 +132,7 @@ function DebatePhaseContent() {
                         router.push('/game/vote1');
                     });
             }
-        }, 1000);
+        }, 100); // Check every 100ms
 
         return () => clearInterval(interval);
     }, [deadline, setTimer, isHost, roomId, router])

@@ -70,15 +70,16 @@ function RoleAssignmentContent() {
     }, [phase, router])
 
     const handleConfirm = async () => {
-        setConfirmed(true)
-        if (isHost) {
-            // Host triggers phase change
-            try {
-                await api.updatePhase(roomId!, 'TOPIC');
-            } catch (error) {
-                console.error("Failed to update phase:", error)
-                setConfirmed(false)
-            }
+        if (!roomId || !playerId) return
+
+        try {
+            setConfirmed(true)
+            await api.confirmRole(roomId, playerId)
+            // Phase change is now handled by the server (RPC) when all players confirm
+        } catch (error) {
+            console.error("Failed to confirm role:", error)
+            setConfirmed(false)
+            // toast.error('確認に失敗しました')
         }
     }
 

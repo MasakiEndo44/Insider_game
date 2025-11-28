@@ -165,17 +165,21 @@ function QuestionPhaseContent() {
 
         const interval = setInterval(() => {
             const now = Date.now();
-            const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
+            const remaining = Math.max(0, Math.ceil((deadline - now) / 1000));
+
+            // Only update state if changed to avoid re-renders, but for smooth ring we might want more frequent updates?
+            // Actually TimerRing takes seconds.
             setTimer(remaining);
 
             if (remaining <= 0) {
                 clearInterval(interval);
-                // Timeout logic
-                if (isMaster && phase !== 'RESULT') {
-                    // Handle timeout
+                // Timeout logic - Transition to VOTE1
+                if (isMaster && phase === 'QUESTION') {
+                    api.updatePhase(roomId!, 'VOTE1')
+                        .catch(err => console.error("Failed to auto-transition to VOTE1:", err));
                 }
             }
-        }, 1000);
+        }, 100); // Check every 100ms for better precision
 
         return () => clearInterval(interval);
     }, [deadline, setTimer, isMaster, phase, roomId]);
