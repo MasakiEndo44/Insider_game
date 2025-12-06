@@ -59,19 +59,19 @@ export function GameSettings({ timeLimit, category, onTimeLimitChange, onCategor
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-surface border border-foreground/10">
-                            <SelectItem value="general" className="text-foreground hover:bg-surface-hover">
-                                一般（推奨）
+                            <SelectItem value="全般" className="text-foreground hover:bg-surface-hover">
+                                全般（推奨）
                             </SelectItem>
-                            <SelectItem value="animals" className="text-foreground hover:bg-surface-hover">
+                            <SelectItem value="動物" className="text-foreground hover:bg-surface-hover">
                                 動物
                             </SelectItem>
-                            <SelectItem value="food" className="text-foreground hover:bg-surface-hover">
+                            <SelectItem value="食べ物" className="text-foreground hover:bg-surface-hover">
                                 食べ物
                             </SelectItem>
-                            <SelectItem value="places" className="text-foreground hover:bg-surface-hover">
+                            <SelectItem value="場所" className="text-foreground hover:bg-surface-hover">
                                 場所
                             </SelectItem>
-                            <SelectItem value="things" className="text-foreground hover:bg-surface-hover">
+                            <SelectItem value="物" className="text-foreground hover:bg-surface-hover">
                                 物
                             </SelectItem>
                         </SelectContent>
