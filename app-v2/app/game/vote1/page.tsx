@@ -12,7 +12,7 @@ import { ProgressIndicator } from "@/components/progress-indicator"
 
 function Vote1Content() {
     const router = useRouter()
-    const { topic, setPhase, setOutcome, roles } = useGame()
+    const { topic, setPhase, setOutcome, roles, phase } = useGame()
     const { roomId, playerId, players } = useRoom()
 
     const [voted, setVoted] = useState(false)
@@ -28,6 +28,15 @@ function Vote1Content() {
             return
         }
     }, [roomId, playerId, router])
+
+    // Listen for phase changes (triggered by DB after all votes)
+    useEffect(() => {
+        if (phase === 'VOTE2') {
+            router.push('/game/vote2')
+        } else if (phase === 'RESULT') {
+            router.push('/game/result')
+        }
+    }, [phase, router])
 
     // Fetch actual answerer and check if Master
     useEffect(() => {
