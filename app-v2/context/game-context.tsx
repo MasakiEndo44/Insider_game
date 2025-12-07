@@ -122,13 +122,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
                     // If new session created or updated
                     if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                         const session = payload.new;
-                        if (session.answerer_id) {
-                            // Set Master role
-                            setState(prev => ({
-                                ...prev,
-                                roles: { ...prev.roles, [session.answerer_id]: 'MASTER' }
-                            }));
-                        }
+                        // Note: answerer_id is the player who answered correctly, NOT the Master role
+                        // Do NOT set answerer as MASTER here - this was causing VOTE1 skip bug
 
                         // Update Phase from session
                         if (session.phase) {
