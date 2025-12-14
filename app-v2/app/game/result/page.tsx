@@ -122,6 +122,8 @@ function ResultContent() {
 
     const [showResults, setShowResults] = useState(false)
     const [autoRedirectTimer, setAutoRedirectTimer] = useState(60)
+    // Snapshot of players at page load - prevents role cards from disappearing when players leave
+    const [playerSnapshot, setPlayerSnapshot] = useState<typeof players>([])
 
     const isCommonWin = outcome === "CITIZENS_WIN"
     const isInsiderWin = outcome === "INSIDER_WIN"
@@ -133,12 +135,16 @@ function ResultContent() {
         }
     }, [roomId, router])
 
-    // Set page status to 'result' on mount
+    // Set page status to 'result' on mount and snapshot players
     useEffect(() => {
         if (playerId) {
             api.updatePlayerPage(playerId, 'result').catch(console.error);
         }
-    }, [playerId]);
+        // Take a snapshot of players at page load
+        if (players.length > 0 && playerSnapshot.length === 0) {
+            setPlayerSnapshot([...players]);
+        }
+    }, [playerId, players, playerSnapshot.length]);
 
     // Add 2-second delay before showing results
     useEffect(() => {
@@ -268,7 +274,7 @@ function ResultContent() {
                         <h2 className="text-lg font-bold text-foreground">役職公開</h2>
 
                         <div className="space-y-3">
-                            {players.map((player) => {
+                            {playerSnapshot.map((player) => {
                                 const role = roles[player.id] || "CITIZEN"
                                 const roleInfo = ROLE_INFO[role]
                                 return (
@@ -296,7 +302,7 @@ function ResultContent() {
                     </div>
 
                     {/* Vote Breakdown */}
-                    <VoteBreakdown roomId={roomId} players={players} roles={roles} />
+                    <VoteBreakdown roomId={roomId} players={playerSnapshot} roles={roles} />
                 </div>
             )}
 
