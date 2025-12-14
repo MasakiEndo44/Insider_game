@@ -17,12 +17,14 @@ function Vote2Content() {
     const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null)
     const [votedCount, setVotedCount] = useState(0)
     const [masterId, setMasterId] = useState<string | null>(null)
+    const [isLoadingMaster, setIsLoadingMaster] = useState(true)
 
     // Fetch master ID from roles table
     useEffect(() => {
         if (!roomId) return;
 
         const fetchMasterId = async () => {
+            setIsLoadingMaster(true);
             const { data: session } = await supabase
                 .from('game_sessions')
                 .select('id')
@@ -43,13 +45,14 @@ function Vote2Content() {
                     setMasterId(masterRole.player_id);
                 }
             }
+            setIsLoadingMaster(false);
         };
 
         fetchMasterId();
     }, [roomId]);
 
-    // Candidates are all players except self and MASTER
-    const candidates = players.filter(p => {
+    // Candidates are all players except self and MASTER (only filter after masterId is loaded)
+    const candidates = isLoadingMaster ? [] : players.filter(p => {
         if (p.id === playerId) return false; // Exclude self
         if (p.id === masterId) return false; // Exclude MASTER
         return true;
@@ -208,22 +211,28 @@ function Vote2Content() {
 
                         {/* Candidate List */}
                         <div className="space-y-3">
-                            {candidates.map((candidate) => (
-                                <button
-                                    key={candidate.id}
-                                    onClick={() => handleVote(candidate.id)}
-                                    className="w-full p-5 bg-surface/30 hover:bg-surface/50 backdrop-blur-sm border-2 border-border hover:border-game-red rounded-xl transition-all text-left group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-full bg-background/10 border-2 border-foreground/30 group-hover:border-game-red flex items-center justify-center font-bold text-foreground transition-all">
-                                            {candidate.nickname.charAt(0)}
+                            {isLoadingMaster ? (
+                                <div className="text-center py-8 text-foreground-secondary">
+                                    読み込み中...
+                                </div>
+                            ) : (
+                                candidates.map((candidate) => (
+                                    <button
+                                        key={candidate.id}
+                                        onClick={() => handleVote(candidate.id)}
+                                        className="w-full p-5 bg-surface/30 hover:bg-surface/50 backdrop-blur-sm border-2 border-border hover:border-game-red rounded-xl transition-all text-left group"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-full bg-background/10 border-2 border-foreground/30 group-hover:border-game-red flex items-center justify-center font-bold text-foreground transition-all">
+                                                {candidate.nickname.charAt(0)}
+                                            </div>
+                                            <span className="text-lg font-bold text-foreground group-hover:text-game-red transition-all">
+                                                {candidate.nickname}
+                                            </span>
                                         </div>
-                                        <span className="text-lg font-bold text-foreground group-hover:text-game-red transition-all">
-                                            {candidate.nickname}
-                                        </span>
-                                    </div>
-                                </button>
-                            ))}
+                                    </button>
+                                ))
+                            )}
                         </div>
                     </>
                 ) : (
