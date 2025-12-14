@@ -22,8 +22,11 @@ function LobbyContent() {
     const [timeLimit, setTimeLimit] = useState(5)
     const [category, setCategory] = useState("全般") // Must match master_topics.category values
     const [isStarting, setIsStarting] = useState(false)
+    const [isTogglingReady, setIsTogglingReady] = useState(false)
 
     const isHost = hostId === playerId
+    const currentPlayer = players.find(p => p.id === playerId)
+    const isReady = currentPlayer?.isReady ?? false
 
     // Redirect if no room data (e.g. refresh)
     useEffect(() => {
@@ -39,12 +42,26 @@ function LobbyContent() {
         }
     }, [phase, router])
 
-    // Reset player status when entering lobby
+    // Reset player status when entering lobby (only for host, non-host should set ready manually)
     useEffect(() => {
-        if (playerId) {
-            api.updatePlayerReadyStatus(playerId, false, 'lobby').catch(console.error);
+        if (playerId && isHost) {
+            api.updatePlayerReadyStatus(playerId, true, 'lobby').catch(console.error);
         }
-    }, [playerId]);
+    }, [playerId, isHost]);
+
+    const handleToggleReady = async () => {
+        if (!playerId || isTogglingReady) return;
+
+        setIsTogglingReady(true);
+        try {
+            await api.updatePlayerReadyStatus(playerId, !isReady, 'lobby');
+        } catch (error) {
+            console.error('Failed to toggle ready status:', error);
+            toast.error('準備状態の更新に失敗しました');
+        } finally {
+            setIsTogglingReady(false);
+        }
+    };
 
     const handleCopyPassphrase = async () => {
         if (passphrase) {
@@ -244,8 +261,19 @@ function LobbyContent() {
                             {isStarting ? "開始中..." : "ゲームを開始する"}
                         </Button>
                     ) : (
-                        <div className="text-center">
-                            <p className="text-sm text-foreground/80 flex items-center justify-center gap-2">
+                        <div className="w-full space-y-3">
+                            <Button
+                                onClick={handleToggleReady}
+                                disabled={isTogglingReady}
+                                className={`w-full h-14 text-lg font-bold rounded-xl transition-all duration-300 ${isReady
+                                        ? "bg-success/20 border-2 border-success text-success hover:bg-success/30"
+                                        : "bg-transparent hover:bg-game-red/10 border border-foreground/70 text-foreground hover:border-game-red hover:text-game-red"
+                                    }`}
+                            >
+                                <Check className="w-5 h-5 mr-2" />
+                                {isTogglingReady ? "更新中..." : isReady ? "準備完了！" : "準備完了"}
+                            </Button>
+                            <p className="text-sm text-foreground/60 text-center flex items-center justify-center gap-2">
                                 <Crown className="w-4 h-4 text-game-red" />
                                 ホストがゲームを開始するまでお待ちください
                             </p>
