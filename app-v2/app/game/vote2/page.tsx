@@ -122,6 +122,63 @@ function Vote2Content() {
         return () => { supabase.removeChannel(channel) }
     }, [roomId]);
 
+    // Subscribe to results for non-host players to navigate to execution scene
+    useEffect(() => {
+        if (!roomId) return;
+
+        const channel = supabase
+            .channel(`results:${roomId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'results',
+                },
+                async (payload: any) => {
+                    // Get the most voted player from vote2
+                    const { data: session } = await supabase
+                        .from('game_sessions')
+                        .select('id')
+                        .eq('room_id', roomId)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single();
+
+                    if (session) {
+                        const { data: votes } = await supabase
+                            .from('votes')
+                            .select('vote_value')
+                            .eq('session_id', session.id)
+                            .eq('vote_type', 'VOTE2');
+
+                        if (votes) {
+                            const voteCounts: Record<string, number> = {};
+                            votes.forEach((v: { vote_value: string }) => {
+                                voteCounts[v.vote_value] = (voteCounts[v.vote_value] || 0) + 1;
+                            });
+
+                            let maxVotes = 0;
+                            let executedPlayerId = '';
+                            Object.entries(voteCounts).forEach(([pid, count]) => {
+                                if (count > maxVotes) {
+                                    maxVotes = count;
+                                    executedPlayerId = pid;
+                                }
+                            });
+
+                            if (executedPlayerId) {
+                                router.push(`/game/execution?executedId=${executedPlayerId}`);
+                            }
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel) }
+    }, [roomId, router]);
+
     // Host Logic: Check votes and trigger result
     useEffect(() => {
         const checkVotes = async () => {
@@ -193,7 +250,13 @@ function Vote2Content() {
                     revealed_player_id: insiderRole?.player_id
                 });
 
-                await api.updatePhase(roomId!, 'RESULT');
+                // Navigate to execution scene with the executed player ID
+                router.push(`/game/execution?executedId=${mostVotedPlayerId}`);
+
+                // Update phase after a short delay to allow other players to receive the event
+                setTimeout(async () => {
+                    await api.updatePhase(roomId!, 'RESULT');
+                }, 5500); // Slightly after execution animation ends
             }
         };
 

@@ -226,6 +226,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
                     .single();
 
                 if (session) {
+                    // Fetch result
                     const { data: result } = await supabase
                         .from('results')
                         .select('*')
@@ -235,6 +236,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
                     if (result) {
                         setOutcome(result.outcome as GameState['outcome']);
                         setRevealedPlayerId(result.revealed_player_id);
+                    }
+
+                    // Fetch topic for all players (RLS allows this when phase is RESULT)
+                    const { data: topicData } = await supabase
+                        .from('topics')
+                        .select('topic_text')
+                        .eq('session_id', session.id)
+                        .single();
+
+                    if (topicData) {
+                        setTopic(topicData.topic_text);
                     }
                 }
             };

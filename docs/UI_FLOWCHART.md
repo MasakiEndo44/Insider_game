@@ -262,9 +262,10 @@ stateDiagram-v2
     Question --> Result: 時間切れ
     Debate --> Vote1: 時間切れ
     Vote1 --> Vote2: No過半数
-    Vote1 --> Result: Yes過半数
+    Vote1 --> ExecutionScene: Yes過半数
+    ExecutionScene --> Result: 5秒後自動遷移
     Vote2 --> Vote2Runoff: 同票
-    Vote2 --> Result: 最多票1人
+    Vote2 --> ExecutionScene: 最多票1人
     Vote2Runoff --> Vote2Runoff: 同票継続
     Vote2Runoff --> Result: 最多票1人 or 3回同票
     Result --> Lobby: 次ラウンド

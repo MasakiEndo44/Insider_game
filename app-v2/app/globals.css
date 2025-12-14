@@ -160,6 +160,52 @@ body::before {
   animation: slide-in 0.4s ease-out;
 }
 
+/* Execution Scene Animations */
+@keyframes gallows-fade-in {
+  0% { opacity: 0; filter: blur(10px); }
+  100% { opacity: 0.8; filter: blur(0); }
+}
+
+@keyframes rope-descend {
+  0% { transform: translateY(-100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes swing {
+  0%, 100% { transform: rotate(-3deg); transform-origin: top center; }
+  50% { transform: rotate(3deg); transform-origin: top center; }
+}
+
+@keyframes name-reveal {
+  0% { opacity: 0; transform: scale(0.8) translateY(20px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes blood-pulse {
+  0%, 100% { box-shadow: inset 0 0 100px rgba(229, 0, 18, 0.1); }
+  50% { box-shadow: inset 0 0 150px rgba(229, 0, 18, 0.25); }
+}
+
+.animate-gallows-fade-in {
+  animation: gallows-fade-in 1s ease-out forwards;
+}
+
+.animate-rope-descend {
+  animation: rope-descend 1.5s ease-out forwards;
+}
+
+.animate-swing {
+  animation: swing 2s ease-in-out infinite;
+}
+
+.animate-name-reveal {
+  animation: name-reveal 0.7s ease-out forwards;
+}
+
+.animate-blood-pulse {
+  animation: blood-pulse 2s ease-in-out infinite;
+}
+
 /* Glassmorphism Utilities */
 .glass-card {
   background: rgba(26, 26, 26, 0.6);
