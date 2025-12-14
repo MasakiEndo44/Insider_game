@@ -19,12 +19,23 @@ function Vote2Content() {
     const [masterId, setMasterId] = useState<string | null>(null)
     const [isLoadingMaster, setIsLoadingMaster] = useState(true)
 
-    // Fetch master ID from roles table
+    // Fetch master ID using RPC (bypasses RLS)
     useEffect(() => {
         if (!roomId) return;
 
         const fetchMasterId = async () => {
             setIsLoadingMaster(true);
+
+            // First, try to get master from game context roles (if available in RESULT phase)
+            const masterFromContext = Object.entries(roles).find(([_, role]) => role === 'MASTER');
+            if (masterFromContext) {
+                console.log('[VOTE2] Master found from context:', masterFromContext[0]);
+                setMasterId(masterFromContext[0]);
+                setIsLoadingMaster(false);
+                return;
+            }
+
+            // Fetch session ID
             const { data: session } = await supabase
                 .from('game_sessions')
                 .select('id')
@@ -34,27 +45,27 @@ function Vote2Content() {
                 .single();
 
             if (session) {
-                const { data: masterRole } = await supabase
-                    .from('roles')
-                    .select('player_id')
-                    .eq('session_id', session.id)
-                    .eq('role', 'MASTER')
-                    .single();
+                // Use RPC to get master (bypasses RLS)
+                const { data: masterIdFromRpc, error } = await supabase
+                    .rpc('get_master_for_session', { p_session_id: session.id });
 
-                if (masterRole) {
-                    setMasterId(masterRole.player_id);
+                if (!error && masterIdFromRpc) {
+                    console.log('[VOTE2] Master found from RPC:', masterIdFromRpc);
+                    setMasterId(masterIdFromRpc);
+                } else {
+                    console.error('[VOTE2] Failed to get master from RPC:', error);
                 }
             }
             setIsLoadingMaster(false);
         };
 
         fetchMasterId();
-    }, [roomId]);
+    }, [roomId, roles]);
 
     // Candidates are all players except self and MASTER (only filter after masterId is loaded)
     const candidates = isLoadingMaster ? [] : players.filter(p => {
         if (p.id === playerId) return false; // Exclude self
-        if (p.id === masterId) return false; // Exclude MASTER
+        if (masterId && p.id === masterId) return false; // Exclude MASTER
         return true;
     })
 
