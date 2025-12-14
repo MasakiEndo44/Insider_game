@@ -83,13 +83,45 @@ if (answererRole === 'MASTER') {
 
 #### ファイル: `app-v2/app/game/vote2/page.tsx`
 
-**変更内容**: 投票候補からマスターを除外
+**変更内容**: rolesテーブルからマスターIDを取得し、投票候補から除外
 
 ```typescript
-// Filter out MASTER from voting options
-const votingCandidates = players.filter(p => {
-    const role = roles[p.id];
-    return role !== 'MASTER';
+const [masterId, setMasterId] = useState<string | null>(null);
+
+useEffect(() => {
+    if (!roomId) return;
+    
+    const fetchMasterId = async () => {
+        const { data: session } = await supabase
+            .from('game_sessions')
+            .select('id')
+            .eq('room_id', roomId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+        
+        if (session) {
+            const { data: masterRole } = await supabase
+                .from('roles')
+                .select('player_id')
+                .eq('session_id', session.id)
+                .eq('role', 'MASTER')
+                .single();
+            
+            if (masterRole) {
+                setMasterId(masterRole.player_id);
+            }
+        }
+    };
+    
+    fetchMasterId();
+}, [roomId]);
+
+// Candidates are all players except self and MASTER
+const candidates = players.filter(p => {
+    if (p.id === playerId) return false; // Exclude self
+    if (p.id === masterId) return false; // Exclude MASTER
+    return true;
 });
 ```
 

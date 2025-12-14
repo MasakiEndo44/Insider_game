@@ -9,9 +9,12 @@ interface PlayerChipProps {
     isReady: boolean
     isCurrentPlayer?: boolean
     animationDelay?: number
+    currentPage?: string
 }
 
-export function PlayerChip({ name, isHost, isReady, isCurrentPlayer = false, animationDelay = 0 }: PlayerChipProps) {
+export function PlayerChip({ name, isHost, isReady, isCurrentPlayer = false, animationDelay = 0, currentPage = 'lobby' }: PlayerChipProps) {
+    const isOnResultPage = currentPage === 'result';
+
     return (
         <div
             className={cn(
@@ -19,7 +22,8 @@ export function PlayerChip({ name, isHost, isReady, isCurrentPlayer = false, ani
                 isCurrentPlayer
                     ? "bg-game-red/10 border-game-red/50 backdrop-blur-sm glow-red"
                     : "bg-surface/40 border-foreground/10 backdrop-blur-sm hover:border-foreground/20",
-                isReady && "ring-1 ring-success/40",
+                isReady && !isOnResultPage && "ring-1 ring-success/40",
+                isOnResultPage && "ring-1 ring-warning/40",
             )}
             style={{
                 animationDelay: `${animationDelay}ms`,
@@ -49,13 +53,18 @@ export function PlayerChip({ name, isHost, isReady, isCurrentPlayer = false, ani
                                 ホスト
                             </span>
                         )}
-                        {!isHost && isReady && (
+                        {!isHost && isOnResultPage && (
+                            <span className="inline-flex items-center gap-1 text-xs text-warning font-medium">
+                                結果確認中
+                            </span>
+                        )}
+                        {!isHost && !isOnResultPage && isReady && (
                             <span className="inline-flex items-center gap-1 text-xs text-success font-medium">
                                 <Check className="w-3 h-3" />
                                 準備完了
                             </span>
                         )}
-                        {!isHost && !isReady && <span className="text-xs text-foreground-secondary">待機中...</span>}
+                        {!isHost && !isOnResultPage && !isReady && <span className="text-xs text-foreground-secondary">待機中...</span>}
                     </div>
                 </div>
 

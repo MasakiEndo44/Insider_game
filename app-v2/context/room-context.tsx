@@ -9,6 +9,7 @@ export interface Player {
     isHost: boolean;
     isReady: boolean;
     isConnected: boolean;
+    currentPage: string;
 }
 
 export interface RoomState {
@@ -117,12 +118,13 @@ export function RoomProvider({ children }: { children: ReactNode }) {
                 .eq('is_connected', true); // Only fetch connected players
 
             if (data) {
-                const mappedPlayers: Player[] = data.map((p: { id: string; nickname: string; is_host: boolean; is_ready: boolean; is_connected: boolean }) => ({
+                const mappedPlayers: Player[] = data.map((p: { id: string; nickname: string; is_host: boolean; is_ready: boolean; is_connected: boolean; current_page: string | null }) => ({
                     id: p.id,
                     nickname: p.nickname,
                     isHost: p.is_host,
                     isReady: p.is_ready,
-                    isConnected: p.is_connected
+                    isConnected: p.is_connected,
+                    currentPage: p.current_page || 'lobby'
                 }));
                 setPlayers(mappedPlayers);
             }

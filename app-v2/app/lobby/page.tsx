@@ -39,6 +39,13 @@ function LobbyContent() {
         }
     }, [phase, router])
 
+    // Reset player status when entering lobby
+    useEffect(() => {
+        if (playerId) {
+            api.updatePlayerReadyStatus(playerId, false, 'lobby').catch(console.error);
+        }
+    }, [playerId]);
+
     const handleCopyPassphrase = async () => {
         if (passphrase) {
             await navigator.clipboard.writeText(passphrase)
@@ -136,6 +143,7 @@ function LobbyContent() {
                                 isReady={player.isReady}
                                 isCurrentPlayer={player.id === playerId}
                                 animationDelay={index * 100}
+                                currentPage={player.currentPage}
                             />
                         ))}
 

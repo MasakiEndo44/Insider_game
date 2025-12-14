@@ -16,12 +16,43 @@ function Vote2Content() {
     const [voted, setVoted] = useState(false)
     const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null)
     const [votedCount, setVotedCount] = useState(0)
+    const [masterId, setMasterId] = useState<string | null>(null)
 
-    // Candidates are all other players except self and MASTER
+    // Fetch master ID from roles table
+    useEffect(() => {
+        if (!roomId) return;
+
+        const fetchMasterId = async () => {
+            const { data: session } = await supabase
+                .from('game_sessions')
+                .select('id')
+                .eq('room_id', roomId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (session) {
+                const { data: masterRole } = await supabase
+                    .from('roles')
+                    .select('player_id')
+                    .eq('session_id', session.id)
+                    .eq('role', 'MASTER')
+                    .single();
+
+                if (masterRole) {
+                    setMasterId(masterRole.player_id);
+                }
+            }
+        };
+
+        fetchMasterId();
+    }, [roomId]);
+
+    // Candidates are all players except self and MASTER
     const candidates = players.filter(p => {
         if (p.id === playerId) return false; // Exclude self
-        const role = roles[p.id];
-        return role !== 'MASTER'; // Exclude MASTER
+        if (p.id === masterId) return false; // Exclude MASTER
+        return true;
     })
 
     useEffect(() => {

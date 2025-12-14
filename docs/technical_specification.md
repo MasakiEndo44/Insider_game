@@ -227,6 +227,8 @@ CREATE TABLE players (
   nickname TEXT NOT NULL,
   is_host BOOLEAN DEFAULT false,
   is_connected BOOLEAN DEFAULT true,
+  is_ready BOOLEAN DEFAULT false,
+  current_page TEXT DEFAULT 'lobby',  -- 現在のページ（lobby, result等）
   confirmed BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   UNIQUE(room_id, nickname)
@@ -235,6 +237,7 @@ CREATE TABLE players (
 CREATE INDEX idx_players_room ON players(room_id);
 CREATE INDEX idx_players_connected ON players(is_connected);
 ```
+
 
 #### game_sessions
 ```sql

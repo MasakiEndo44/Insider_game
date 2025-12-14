@@ -353,5 +353,26 @@ export const api = {
             .eq('id', session.id);
 
         return { success: true };
+    },
+
+    updatePlayerPage: async (playerId: string, page: string) => {
+        const { error } = await supabase
+            .from('players')
+            .update({ current_page: page })
+            .eq('id', playerId);
+
+        if (error) throw error;
+        return { success: true };
+    },
+
+    updatePlayerReadyStatus: async (playerId: string, isReady: boolean, currentPage: string = 'lobby') => {
+        const { error } = await supabase
+            .from('players')
+            .update({ is_ready: isReady, current_page: currentPage })
+            .eq('id', playerId);
+
+        if (error) throw error;
+        return { success: true };
     }
 };
+

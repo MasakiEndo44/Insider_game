@@ -121,6 +121,7 @@ function ResultContent() {
     const { roomId, players, resetRoom, playerId } = useRoom()
 
     const [showResults, setShowResults] = useState(false)
+    const [autoRedirectTimer, setAutoRedirectTimer] = useState(60)
 
     const isCommonWin = outcome === "CITIZENS_WIN"
     const isInsiderWin = outcome === "INSIDER_WIN"
@@ -132,6 +133,13 @@ function ResultContent() {
         }
     }, [roomId, router])
 
+    // Set page status to 'result' on mount
+    useEffect(() => {
+        if (playerId) {
+            api.updatePlayerPage(playerId, 'result').catch(console.error);
+        }
+    }, [playerId]);
+
     // Add 2-second delay before showing results
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -139,6 +147,24 @@ function ResultContent() {
         }, 2000)
         return () => clearTimeout(timer)
     }, [])
+
+    // 60-second auto-redirect timer
+    useEffect(() => {
+        if (!showResults) return;
+
+        const interval = setInterval(() => {
+            setAutoRedirectTimer(prev => {
+                if (prev <= 1) {
+                    clearInterval(interval);
+                    handleNextRound();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [showResults]);
 
     const handleNextRound = async () => {
         // Host triggers new game
@@ -148,6 +174,11 @@ function ResultContent() {
         setTopic("")
         setOutcome(null)
         setTimer(300)
+
+        // Update player page status
+        if (playerId) {
+            await api.updatePlayerReadyStatus(playerId, false, 'lobby').catch(console.error);
+        }
 
         // Host updates phase in DB
         if (roomId) {
@@ -279,6 +310,7 @@ function ResultContent() {
                         >
                             <RotateCcw className="w-5 h-5 mr-2" />
                             次のラウンド
+                            <span className="ml-2 text-sm text-foreground-secondary">({autoRedirectTimer}秒)</span>
                         </Button>
 
                         <Button

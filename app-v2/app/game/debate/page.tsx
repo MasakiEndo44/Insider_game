@@ -2,13 +2,14 @@
 
 import { useState, useEffect, Suspense } from "react"
 import { useRouter } from "next/navigation"
-import { Users } from "lucide-react"
+import { Users, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useGame } from "@/context/game-context"
 import { useRoom } from "@/context/room-context"
 import { api } from '@/lib/api';
 import { supabase } from "@/lib/supabase/client"
 import { toast } from 'sonner'
+import { QuestionHistoryModal, type Question } from "./_components/QuestionHistoryModal"
 
 function TimerRing({ remaining, total, size = 200 }: { remaining: number; total: number; size?: number }) {
     const radius = 45
@@ -55,6 +56,11 @@ function DebatePhaseContent() {
     const [deadline, setDeadline] = useState<number | null>(null)
     const [initialTotal, setInitialTotal] = useState(300)
 
+    // New state for answerer display and Q&A history
+    const [answererName, setAnswererName] = useState<string | null>(null)
+    const [questions, setQuestions] = useState<Question[]>([])
+    const [showHistoryModal, setShowHistoryModal] = useState(false)
+
     useEffect(() => {
         if (!roomId) {
             router.push("/")
@@ -62,14 +68,14 @@ function DebatePhaseContent() {
         }
     }, [roomId, router])
 
-    // Sync timer with server
+    // Sync timer with server and fetch answerer + questions
     useEffect(() => {
         if (!roomId) return;
 
-        const syncTimer = async () => {
+        const fetchDebateData = async () => {
             const { data: session } = await supabase
                 .from('game_sessions')
-                .select('id, created_at, time_limit, deadline_epoch')
+                .select('id, created_at, time_limit, deadline_epoch, answerer_id')
                 .eq('room_id', roomId)
                 .order('created_at', { ascending: false })
                 .limit(1)
@@ -94,11 +100,37 @@ function DebatePhaseContent() {
                     const remaining = Math.max(0, Math.floor((calculatedDeadline - now) / 1000));
                     setTimer(remaining);
                 }
+
+                // Fetch answerer name
+                if (session.answerer_id) {
+                    const player = players.find(p => p.id === session.answerer_id);
+                    if (player) {
+                        setAnswererName(player.nickname);
+                    }
+                }
+
+                // Fetch Q&A history
+                const { data: questionsData } = await supabase
+                    .from('questions')
+                    .select('*, players(nickname)')
+                    .eq('session_id', session.id)
+                    .order('created_at', { ascending: true });
+
+                if (questionsData) {
+                    const mappedQuestions: Question[] = questionsData.map(q => ({
+                        id: q.id,
+                        text: q.text,
+                        answer: q.answer as 'pending' | 'yes' | 'no',
+                        timestamp: new Date(q.created_at).getTime(),
+                        playerName: q.players?.nickname || '不明'
+                    }));
+                    setQuestions(mappedQuestions);
+                }
             }
         };
 
-        syncTimer();
-    }, [roomId, setTimer]);
+        fetchDebateData();
+    }, [roomId, setTimer, players]);
 
     // Listen for phase change
     useEffect(() => {
@@ -165,6 +197,24 @@ function DebatePhaseContent() {
                     <TimerRing remaining={timer} total={initialTotal} />
                 </div>
 
+                {/* Answerer Display (NEW) */}
+                {answererName && (
+                    <div className="bg-success/10 border border-success/30 backdrop-blur-sm rounded-xl p-4 text-center">
+                        <p className="text-lg font-bold text-success">
+                            🎉 {answererName} さんが正解しました
+                        </p>
+                    </div>
+                )}
+
+                {/* Q&A History Button (NEW) */}
+                <Button
+                    onClick={() => setShowHistoryModal(true)}
+                    className="w-full h-12 bg-transparent hover:bg-foreground/10 text-foreground border border-border rounded-xl transition-all flex items-center justify-center gap-2"
+                >
+                    <MessageSquare className="w-5 h-5" />
+                    質問履歴を見る ({questions.length}件)
+                </Button>
+
                 {/* Instructions */}
                 <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-xl p-6 flex flex-col" style={{ padding: '24px', gap: '12px' }}>
                     <h3 className="font-bold text-foreground text-lg">討論の進め方</h3>
@@ -193,6 +243,14 @@ function DebatePhaseContent() {
                         </Button>
                     </div>
                 </div>
+            )}
+
+            {/* Q&A History Modal (NEW) */}
+            {showHistoryModal && (
+                <QuestionHistoryModal
+                    questions={questions}
+                    onClose={() => setShowHistoryModal(false)}
+                />
             )}
         </div>
     )
