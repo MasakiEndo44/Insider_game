@@ -136,15 +136,20 @@ function ResultContent() {
     }, [roomId, router])
 
     // Set page status to 'result' on mount and snapshot players
+    // Set page status to 'result' on mount
     useEffect(() => {
         if (playerId) {
             api.updatePlayerPage(playerId, 'result').catch(console.error);
         }
+    }, [playerId]);
+
+    // Take a snapshot of players at page load
+    useEffect(() => {
         // Take a snapshot of players at page load
         if (players.length > 0 && playerSnapshot.length === 0) {
             setPlayerSnapshot([...players]);
         }
-    }, [playerId, players, playerSnapshot.length]);
+    }, [players, playerSnapshot.length]);
 
     // Add 2-second delay before showing results
     useEffect(() => {
