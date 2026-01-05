@@ -385,3 +385,29 @@ sequenceDiagram
         Browser->>NextJS: リトライ
     end
 ```
+
+## 8. 退出シーケンス
+
+```mermaid
+sequenceDiagram
+    actor User as ユーザー
+    participant Browser as ブラウザ
+    participant NextJS as Next.js
+    participant Supabase as Supabase
+    participant Realtime as Realtime
+
+    User->>Browser: ダイアログ「タイトルへ戻る」ボタンクリック
+    Browser->>Browser: 確認ダイアログ表示
+
+    User->>Browser: 「退出する」クリック
+    Browser->>NextJS: POST /api/rooms/leave<br/>{room_id, player_id}
+    NextJS->>Supabase: DELETE players<br/>WHERE player_id
+    
+    Supabase->>Realtime: player_left イベント
+    
+    NextJS-->>Browser: success
+    
+    Browser->>Browser: 状態リセット (Context/LocalStorage)
+    Browser->>Realtime: 購読解除
+    Browser->>Browser: / (トップページ) へ遷移
+```

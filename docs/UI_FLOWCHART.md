@@ -20,6 +20,16 @@ flowchart TD
     WaitPlayers -->|3人以上 & 全員準備完了| HostStart{ホストがゲーム開始?}
     HostStart -->|No| WaitPlayers
     HostStart -->|Yes| StartGame[POST /api/sessions/start]
+
+    WaitPlayers -->|退出| TopPage
+    Lobby -->|退出| TopPage
+    RoleAssignment -->|退出| TopPage
+    TopicPhase -->|退出| TopPage
+    QuestionPhase -->|退出| TopPage
+    DebatePhase -->|退出| TopPage
+    Vote1Phase -->|退出| TopPage
+    Vote2Phase -->|退出| TopPage
+    ResultPage -->|退出| TopPage
     
     StartGame --> RoleAssignment[役職配布フェーズ]
     RoleAssignment --> AllConfirmed{全員確認?}

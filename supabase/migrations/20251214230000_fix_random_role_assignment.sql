@@ -16,7 +16,7 @@ DECLARE
   i INT;
 BEGIN
   -- Set random seed based on current timestamp for true randomness each call
-  PERFORM setseed(EXTRACT(MICROSECONDS FROM clock_timestamp())::DOUBLE PRECISION / 1000000);
+  PERFORM setseed((EXTRACT(MICROSECONDS FROM clock_timestamp()) % 1000000)::DOUBLE PRECISION / 1000000);
 
   -- Lock room to prevent concurrent starts
   SELECT phase INTO v_phase FROM rooms WHERE id = p_room_id FOR UPDATE;

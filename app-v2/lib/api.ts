@@ -131,24 +131,38 @@ export const api = {
     },
 
     startGame: async (roomId: string, category: string = '全般', timeLimit: number = 300) => {
-        // 1. Create Game Session AND Assign Roles atomically using RPC
-        const { data: sessionId, error: sessionError } = await supabase
-            .rpc('start_game_session', {
-                p_room_id: roomId,
-                p_category: category,
-                p_time_limit: timeLimit
+        try {
+            console.log('Starting game session for room:', roomId);
+            // 1. Create Game Session AND Assign Roles atomically using RPC
+            const { data: sessionId, error: sessionError } = await supabase
+                .rpc('start_game_session', {
+                    p_room_id: roomId,
+                    p_category: category,
+                    p_time_limit: timeLimit
+                });
+
+            if (sessionError) {
+                console.error('RPC start_game_session error:', sessionError);
+                throw sessionError;
+            }
+
+            console.log('Session started:', sessionId, 'Selecting topic...');
+
+            // 2. Select Topic (Edge Function)
+            const { error: topicError } = await supabase.functions.invoke('select-topic', {
+                body: { session_id: sessionId, category: category || '全般' }
             });
 
-        if (sessionError) throw sessionError;
+            if (topicError) {
+                console.error('Edge Function select-topic error:', topicError);
+                throw topicError;
+            }
 
-        // 2. Select Topic (Edge Function)
-        const { error: topicError } = await supabase.functions.invoke('select-topic', {
-            body: { session_id: sessionId, category: category || '全般' }
-        });
-
-        if (topicError) throw topicError;
-
-        return { success: true };
+            return { success: true };
+        } catch (e) {
+            console.error('api.startGame failed:', e);
+            throw e;
+        }
     },
 
     submitVote1: async (roomId: string, playerId: string, vote: 'yes' | 'no') => {

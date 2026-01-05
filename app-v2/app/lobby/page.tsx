@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { PlayerChip } from "@/components/player-chip"
 import { RoomInfoCard } from "@/components/room-info-card"
 import { GameSettings } from "@/components/game-settings"
-import { Users, Play, LogOut, Crown, Copy, Check } from "lucide-react"
+import { Users, Play, Crown, Copy, Check } from "lucide-react"
 import Image from "next/image"
 import { useRoom } from "@/context/room-context"
 import { useGame } from "@/context/game-context"
@@ -15,7 +15,7 @@ import { toast } from 'sonner'
 
 function LobbyContent() {
     const router = useRouter()
-    const { roomId, passphrase, players, hostId, playerId, resetRoom } = useRoom()
+    const { roomId, passphrase, players, hostId, playerId, resetRoom, isRestored } = useRoom()
     const { phase } = useGame()
 
     const [copied, setCopied] = useState(false)
@@ -30,10 +30,10 @@ function LobbyContent() {
 
     // Redirect if no room data (e.g. refresh)
     useEffect(() => {
-        if (!roomId) {
+        if (isRestored && !roomId) {
             router.push("/")
         }
-    }, [roomId, router])
+    }, [roomId, router, isRestored])
 
     // Redirect on phase change
     useEffect(() => {
@@ -80,26 +80,16 @@ function LobbyContent() {
             // Convert minutes to seconds
             await api.startGame(roomId, category, timeLimit * 60)
             // Navigation handled by useEffect on phase change
-        } catch (error) {
-            console.error(error)
-            toast.error('ゲームの開始に失敗しました')
+        } catch (error: any) {
+            console.error('Start game error:', error)
+            toast.error(`ゲーム開始エラー: ${error.message || '不明なエラー'}`)
             setIsStarting(false)
         }
     }
 
-    const handleLeave = async () => {
-        if (roomId && playerId) {
-            try {
-                await api.leaveRoom(roomId, playerId);
-            } catch (error) {
-                console.error('Failed to leave room:', error);
-            }
-        }
-        resetRoom();
-        router.push("/");
-    };
 
-    if (!roomId) return null
+
+    if (!isRestored || !roomId) return null
 
     const readyCount = players.filter((p) => p.isReady).length
     // For dev/mock, allow starting with fewer players if needed, but UI says 3
@@ -119,14 +109,6 @@ function LobbyContent() {
                             <p className="text-sm text-foreground/80">プレイヤーを待っています...</p>
                         </div>
                     </div>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleLeave}
-                        className="text-foreground/70 hover:text-foreground hover:bg-surface/50"
-                    >
-                        <LogOut className="w-5 h-5" />
-                    </Button>
                 </div>
 
                 {/* Room Info */}
@@ -266,8 +248,8 @@ function LobbyContent() {
                                 onClick={handleToggleReady}
                                 disabled={isTogglingReady}
                                 className={`w-full h-14 text-lg font-bold rounded-xl transition-all duration-300 ${isReady
-                                        ? "bg-success/20 border-2 border-success text-success hover:bg-success/30"
-                                        : "bg-transparent hover:bg-game-red/10 border border-foreground/70 text-foreground hover:border-game-red hover:text-game-red"
+                                    ? "bg-success/20 border-2 border-success text-success hover:bg-success/30"
+                                    : "bg-transparent hover:bg-game-red/10 border border-foreground/70 text-foreground hover:border-game-red hover:text-game-red"
                                     }`}
                             >
                                 <Check className="w-5 h-5 mr-2" />

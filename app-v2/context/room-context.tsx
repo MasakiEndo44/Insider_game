@@ -29,6 +29,7 @@ interface RoomContextType extends RoomState {
     setHostId: (id: string) => void;
     setPlayerId: (id: string) => void;
     resetRoom: () => void;
+    isRestored: boolean;
 }
 
 const initialState: RoomState = {
@@ -69,18 +70,27 @@ const loadInitialState = (): RoomState => {
 };
 
 export function RoomProvider({ children }: { children: ReactNode }) {
-    const [state, setState] = useState<RoomState>(loadInitialState);
+    const [state, setState] = useState<RoomState>(initialState);
+    const [isRestored, setIsRestored] = useState(false);
+
+    useEffect(() => {
+        const stored = loadInitialState();
+        if (stored.roomId) {
+            setState(stored);
+        }
+        setIsRestored(true);
+    }, []);
 
     // Save state to localStorage whenever it changes
     useEffect(() => {
-        if (state.roomId && state.playerId) {
+        if (state.roomId && state.playerId && isRestored) {
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
             } catch (error) {
                 console.error('Failed to save room state to localStorage:', error);
             }
         }
-    }, [state]);
+    }, [state, isRestored]);
 
     const setRoomId = (id: string) => setState(prev => ({ ...prev, roomId: id }));
     const setPassphrase = (passphrase: string) => setState(prev => ({ ...prev, passphrase }));
@@ -180,7 +190,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
                 updatePlayer,
                 setHostId,
                 setPlayerId,
-                resetRoom
+                resetRoom,
+                isRestored
             }}
         >
             {children}

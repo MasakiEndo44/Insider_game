@@ -4,6 +4,7 @@ import "./globals.css";
 import { RoomProvider } from "@/context/room-context";
 import { GameProvider } from "@/context/game-context";
 import { ToasterProvider } from "@/components/toaster";
+import { ReturnToTitleButton } from "@/components/return-to-title-button";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({
         <RoomProvider>
           <GameProvider>
             {children}
+            <ReturnToTitleButton />
           </GameProvider>
         </RoomProvider>
         <ToasterProvider />
